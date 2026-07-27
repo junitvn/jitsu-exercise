@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { SearchInput } from '@/components/ui/search-input'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { ShipmentGroupList } from '@/features/shipment/components/shipment-group-list'
-import { PANEL_SEARCH_INPUT_CLASS_NAME } from '@/utils/constants'
 import type { ShipmentStatus } from '@/features/shipment/types/shipment'
 
 interface ShipmentListPanelProps {
@@ -29,7 +28,7 @@ export function ShipmentListPanel({ selectedId, selectedStatus, onSelect }: Ship
           value={search}
           onChange={setSearch}
           clearLabel="Clear shipment search"
-          className={PANEL_SEARCH_INPUT_CLASS_NAME}
+          className="py-1 pt-3 sm:pt-2.5"
         />
         <ShipmentGroupList
           search={debouncedSearch}

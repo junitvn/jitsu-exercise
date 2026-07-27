@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router'
-import { ChevronsLeft, ChevronsRight, ClipboardList, Menu, PackageSearch } from 'lucide-react'
+import { useState } from 'react'
+import { NavLink, Outlet } from 'react-router'
+import { ChevronsLeft, ChevronsRight, ClipboardList, PackageSearch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 import { useUIStore } from '@/store/use-ui-store'
 
@@ -12,30 +11,14 @@ const navigationItems = [
 ]
 
 export function RootLayout() {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true)
   const mobileHeaderTitle = useUIStore((state) => state.mobileHeaderTitle)
   const mobileHeaderAction = useUIStore((state) => state.mobileHeaderAction)
-  const location = useLocation()
-
-  useEffect(() => {
-    setIsMobileMenuOpen(false)
-  }, [location.pathname])
 
   return (
     <div className="flex min-h-svh bg-slate-50 dark:bg-slate-950">
       <header className="fixed inset-x-0 top-0 z-40 flex h-14 items-center border-b bg-background/95 px-3 shadow-sm backdrop-blur md:hidden">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-lg"
-          aria-label="Open menu"
-          aria-expanded={isMobileMenuOpen}
-          onClick={() => setIsMobileMenuOpen(true)}
-        >
-          <Menu aria-hidden="true" className="size-5" />
-        </Button>
-        <div className="min-w-0 flex-1 px-2">
+        <div className="min-w-0 flex-1 pr-2">
           {mobileHeaderTitle && (
             <div className="truncate text-xl font-semibold tracking-tight">{mobileHeaderTitle}</div>
           )}
@@ -57,20 +40,9 @@ export function RootLayout() {
         />
       </aside>
 
-      <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-        <SheetContent
-          side="left"
-          aria-label="Navigation menu"
-          className="flex flex-col px-3 pt-3 md:hidden"
-        >
-          <div className="mb-4 flex items-center justify-between">
-            <SidebarLogo />
-          </div>
-          <SidebarNavigation />
-        </SheetContent>
-      </Sheet>
+      <BottomTabNavigation />
 
-      <div className="min-w-0 flex-1 pt-14 md:pt-0 [&>main]:h-[calc(100svh-3.5rem)] md:[&>main]:h-svh">
+      <div className="min-w-0 flex-1 md:pt-0 [&>main]:h-[calc(100svh-3.3rem)] md:[&>main]:h-svh">
         <Outlet />
       </div>
     </div>
@@ -191,6 +163,38 @@ function SidebarNavigation({ isCollapsed = false }: { isCollapsed?: boolean }) {
           )}
         </NavLink>
       ))}
+    </nav>
+  )
+}
+
+function BottomTabNavigation() {
+  return (
+    <nav
+      aria-label="Primary"
+      className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 px-2 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] shadow-[0_-6px_18px_rgba(15,23,42,0.08)] backdrop-blur md:hidden"
+    >
+      <div className="grid grid-cols-2 gap-1">
+        {navigationItems.map(({ to, label, icon: Icon, end }) => (
+          <NavLink
+            key={to}
+            to={to}
+            end={end}
+            className={({ isActive }) =>
+              cn(
+                'flex h-10 min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                isActive && 'text-primary hover:bg-muted/60 hover:text-primary',
+              )
+            }
+          >
+            {({ isActive }) => (
+              <>
+                <Icon aria-hidden="true" className={cn('size-5', isActive && 'text-primary')} />
+                <span className={cn('truncate', isActive && 'font-semibold')}>{label}</span>
+              </>
+            )}
+          </NavLink>
+        ))}
+      </div>
     </nav>
   )
 }
