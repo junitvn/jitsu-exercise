@@ -68,7 +68,7 @@ export function AssignmentPage() {
           </div>
         </div>
         <div
-          className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden md:grid-cols-[var(--desktop-panel-width)_var(--desktop-panel-width)_minmax(0,1fr)] md:rounded-2xl"
+          className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden md:grid-cols-[var(--assignment-panel-width)_var(--shipment-panel-width)_minmax(0,1fr)] md:rounded-2xl"
           style={DESKTOP_PANEL_WIDTH_STYLE}
         >
           <aside className="flex min-h-0 flex-col border-b bg-white px-2 pb-2 md:border-r md:border-b-0 dark:bg-slate-950">

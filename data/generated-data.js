@@ -24,7 +24,7 @@ for (let i = 1; i <= 100; i++) {
     const status = statusList[i % statusList.length];
     const assignment = status === "IN_TRANSIT"
         ? assignments[i % 2]
-        : status === "DELIVERED" && i % 6 === 2
+        : status === "DELIVERED"
             ? assignments[2]
             : null;
     const clientName = clients[i % clients.length];

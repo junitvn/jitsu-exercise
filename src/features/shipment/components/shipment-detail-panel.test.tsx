@@ -2,11 +2,13 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ShipmentDetailPanel } from '@/features/shipment/components/shipment-detail-panel'
+import type { Assignment } from '@/features/assignment/types/assignment'
 import type { Shipment } from '@/features/shipment/types/shipment'
 
 const mocks = vi.hoisted(() => ({
   mutate: vi.fn(),
   deleteMutate: vi.fn(),
+  shipment: undefined as Shipment | undefined,
 }))
 
 const shipment: Shipment = {
@@ -25,7 +27,7 @@ const shipment: Shipment = {
 
 vi.mock('@/features/shipment/hooks/use-shipment', () => ({
   useShipment: () => ({
-    data: shipment,
+    data: mocks.shipment,
     isLoading: false,
     isError: false,
     refetch: vi.fn(),
@@ -33,8 +35,34 @@ vi.mock('@/features/shipment/hooks/use-shipment', () => ({
 }))
 
 vi.mock('@/features/assignment/hooks/use-assignments', () => ({
-  useAssignments: () => ({
-    data: [{ id: 'asg_001', label: 'Dallas AM route' }],
+  useAssignments: (status?: Assignment['status']) => ({
+    data:
+      status === 'OPEN'
+        ? [
+          {
+            id: 'asg_001',
+            label: 'Dallas AM route',
+            status: 'OPEN',
+            clients: [],
+            shipment_count: 0,
+          },
+        ]
+        : [
+          {
+            id: 'asg_001',
+            label: 'Dallas AM route',
+            status: 'OPEN',
+            clients: [],
+            shipment_count: 0,
+          },
+          {
+            id: 'asg_003',
+            label: 'Airport completed route',
+            status: 'COMPLETED',
+            clients: [],
+            shipment_count: 0,
+          },
+        ],
   }),
 }))
 
@@ -62,6 +90,7 @@ vi.mock('@/features/shipment/components/shipment-map', () => ({
 describe('ShipmentDetailPanel', () => {
   beforeEach(() => {
     mocks.mutate.mockClear()
+    mocks.shipment = shipment
   })
 
   it('persists edited coordinates through the update mutation', async () => {
@@ -108,6 +137,28 @@ describe('ShipmentDetailPanel', () => {
     expect(mocks.mutate).not.toHaveBeenCalled()
   })
 
+  it('does not show the assignment helper text while the shipment status is open', async () => {
+    render(<ShipmentDetailPanel shipmentId="shp_001" />)
+
+    expect(await screen.findByLabelText('Assignment')).toBeVisible()
+    expect(
+      screen.queryByText('Assignments are selected when moving a shipment into transit.'),
+    ).not.toBeInTheDocument()
+  })
+
+  it('shows the existing assignment label instead of a current-assignment fallback', async () => {
+    mocks.shipment = {
+      ...shipment,
+      status: 'DELIVERED',
+      assignment_id: 'asg_003',
+    }
+
+    render(<ShipmentDetailPanel shipmentId="shp_001" />)
+
+    expect(await screen.findByText('Airport completed route')).toBeVisible()
+    expect(screen.queryByText('Current assignment')).not.toBeInTheDocument()
+  })
+
   it('shows the unsaved status in the header badge and reverts when changed back', async () => {
     const user = userEvent.setup()
 
@@ -120,10 +171,14 @@ describe('ShipmentDetailPanel', () => {
 
     expect(screen.getByLabelText('Shipment status: In transit')).toBeVisible()
 
+    await user.click(screen.getByLabelText('Assignment'))
+    await user.click(await screen.findByRole('option', { name: /dallas am route/i }))
+
     await user.click(screen.getByLabelText('Status'))
     await user.click(await screen.findByRole('option', { name: /^open$/i }))
 
     expect(screen.getByLabelText('Shipment status: Open')).toBeVisible()
+    expect(screen.getByLabelText('Assignment')).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled()
   })
 })

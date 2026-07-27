@@ -67,6 +67,7 @@ export function ShipmentDetailPanel({
   className,
 }: ShipmentDetailPanelProps) {
   const { data: shipment, isLoading, isError, refetch } = useShipment(shipmentId)
+  const { data: assignments = [] } = useAssignments()
   const { data: openAssignments = [] } = useAssignments('OPEN')
   const updateShipment = useUpdateShipment()
   const deleteShipment = useDeleteShipment()
@@ -132,13 +133,14 @@ export function ShipmentDetailPanel({
     label: SHIPMENT_STATUS_STYLES[status].label,
     value: status,
   }))
-  const hasCurrentAssignment =
+  const currentAssignment = assignments.find((assignment) => assignment.id === shipment.assignment_id)
+  const hasCurrentOpenAssignment =
     Boolean(shipment.assignment_id) &&
     openAssignments.some((assignment) => assignment.id === shipment.assignment_id)
   const assignmentItems = [
     { label: 'Unassigned', value: '' },
-    ...(!hasCurrentAssignment && shipment.assignment_id
-      ? [{ label: `Current assignment`, value: shipment.assignment_id }]
+    ...(!hasCurrentOpenAssignment && currentAssignment
+      ? [{ label: currentAssignment.label, value: currentAssignment.id }]
       : []),
     ...openAssignments.map((assignment) => ({
       label: assignment.label,
@@ -147,6 +149,10 @@ export function ShipmentDetailPanel({
   ]
   const editableMapShipment = { ...shipment, lat: Number(lat), lng: Number(lng) }
   const needsAssignment = shipment.status === 'OPEN' && targetStatus === 'IN_TRANSIT'
+  const isAssignmentSelectDisabled =
+    targetStatus === 'OPEN' || (!needsAssignment && shipment.status !== 'IN_TRANSIT')
+  const showAssignmentDescription =
+    targetStatus !== 'OPEN' && targetStatus !== 'DELIVERED' && !needsAssignment && shipment.status !== 'IN_TRANSIT'
   const mapShipments =
     shipments.length > 0
       ? shipments.map((mapShipment) =>
@@ -272,6 +278,12 @@ export function ShipmentDetailPanel({
                   shouldDirty: true,
                   shouldValidate: true,
                 })
+                if (value === 'OPEN') {
+                  form.setValue('assignment_id', null, {
+                    shouldDirty: true,
+                    shouldValidate: true,
+                  })
+                }
               }}
               disabled={isStatusSelectDisabled}
             >
@@ -303,7 +315,7 @@ export function ShipmentDetailPanel({
             label="Assignment"
             error={form.formState.errors.assignment_id?.message}
             description={
-              !needsAssignment && shipment.status !== 'IN_TRANSIT'
+              showAssignmentDescription
                 ? 'Assignments are selected when moving a shipment into transit.'
                 : undefined
             }
@@ -318,7 +330,7 @@ export function ShipmentDetailPanel({
                   shouldValidate: true,
                 })
               }}
-              disabled={!needsAssignment && shipment.status !== 'IN_TRANSIT'}
+              disabled={isAssignmentSelectDisabled}
             >
               <SelectTrigger
                 id="assignment_id"

@@ -121,7 +121,7 @@ export function AssignmentDetailPanel({
     <section className="flex min-h-0 flex-col gap-[6px] overflow-hidden px-2 py-2 sm:px-2">
       <div className="shrink-0">
         <div className="hidden flex-row items-center justify-between gap-2 md:flex">
-          <h2 className="text-2xl font-semibold">{assignment.label}</h2>
+          <h2 className="text-2xl font-semibold truncate">{assignment.label}</h2>
           <Badge variant="outline" className={statusStyles.badge}>
             {statusStyles.label}
           </Badge>
@@ -131,7 +131,7 @@ export function AssignmentDetailPanel({
         </p>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-2">
+      <div className="flex min-h-0 flex-1 flex-col gap-2 -mt-1">
         <div className="flex flex-row justify-between">
           <h3 className="text-sm font-semibold">{`Shipments`}</h3>
         </div>

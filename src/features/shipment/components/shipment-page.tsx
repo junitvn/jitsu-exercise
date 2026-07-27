@@ -68,7 +68,7 @@ export function ShipmentPage() {
         </header>
 
         <div
-          className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden md:grid-cols-[var(--desktop-panel-width)_minmax(0,1fr)]"
+          className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden md:grid-cols-[var(--shipment-panel-width)_minmax(0,1fr)]"
           style={DESKTOP_PANEL_WIDTH_STYLE}
         >
           <ShipmentListPanel
