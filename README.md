@@ -72,20 +72,19 @@ VITE_API_BASE_URL=http://localhost:3001 npm run dev
 - Assignment detail, related shipments, and a multi-stop route map
 - Assignment creation and guarded deletion
 
-## Approach
+### Technical decisions
 
-The code is organized by domain under `src/features/shipment` and
-`src/features/assignment`. Each feature keeps API functions, query hooks, types, and
-components together. Shared UI primitives live in `src/components/ui`; feature code uses
-those first for dialogs, sheets, forms, search, and async states.
+#### Architecture
 
-The shipment page owns only the current selection and dialog state. Selecting a list row
-passes its ID to the detail panel, which loads the canonical record independently. TanStack
-Query owns server state: mutations update the detail cache and invalidate affected list and
-assignment queries through feature query-key factories, so all views converge on persisted
-data. React Hook Form and Zod manage editable values and validation.
+- React was chosen for a lightweight, component-driven UI with strong ecosystem support
+  for routing, forms, data fetching, maps, and testing.
+- Zustand is used instead of Redux because the app only needs small client UI state.
+  Server data stays in TanStack Query, so Redux would add boilerplate without much value.
+- shadcn/ui was chosen over Ant Design or MUI because it provides accessible primitives
+  that are easy to own, theme, and keep visually close to the product instead of a heavier
+  pre-styled design system.
 
-Additional refactor rationale is documented in `docs/refactor-decisions.md`.
+#### Business rules
 
 Status rules are isolated in `src/features/shipment/lib/status-transitions.ts` instead of
 being embedded in presentation components:
@@ -97,46 +96,22 @@ being embedded in presentation components:
 | `IN_TRANSIT` | `OPEN` | Assignment is cleared |
 | `DELIVERED` | None | Treated as a terminal state |
 
-For large datasets, each status group requests 50 records at a time. Search is debounced
-for 300 ms and sent to the API, while TanStack Virtual mounts only the visible rows. This
-avoids loading or rendering the full shipment collection in the browser.
+#### Performance
+
+- The UI never loads all shipments at once. Each status group requests 50 records per page
+  with `_page` and `_per_page`.
+- Search is debounced for 300 ms and sent to the API, avoiding expensive client-side scans.
+- TanStack Virtual mounts only visible rows, so rendering cost stays stable even when the
+  total dataset is very large.
+- TanStack Query caches pages by status and search term, deduplicates requests, and
+  refreshes only affected queries after mutations.
+- Detail panels fetch a shipment by ID, keeping list payloads small and avoiding duplicated
+  canonical state.
 
 ## Tradeoffs
 
-- JSON Server keeps the submission self-contained, but it is not a production backend:
-  persistence is file-based and there is no authentication, authorization, transactional
-  update, or concurrency handling.
-- Selection stays in page-local state because only sibling list/detail panels need it.
-  URL-based selection would improve deep-linking and browser history in a larger product.
-- Assignment shipment counts are synchronized by the client after shipment create, update,
-  and delete. A real backend should enforce this invariant atomically.
-- Server-side search and pagination keep the UI scalable, but require the backing API to
-  support the documented query parameters.
-- OpenStreetMap provides a useful map without credentials, but map rendering depends on an
-  internet connection and the public tile service.
-
-## Assumptions
-
-Where the exercise was ambiguous, I made the following assumptions:
-
-- `q` performs case-insensitive full-text search across `client_name` and `label`.
-- The API supports `_page`, `_per_page`, and an `X-Total-Count` response header.
-- `PUT /shipments/:id` replaces the resource, so edits are merged into the loaded shipment
-  before the complete object is sent.
-- An `OPEN` shipment may be unassigned, but moving it to `IN_TRANSIT` requires an `OPEN`
-  assignment.
-- Returning an `IN_TRANSIT` shipment to `OPEN` removes its assignment.
-- `DELIVERED` is terminal and cannot transition to another status.
-- An assignment containing shipments cannot be deleted; its shipments must first be
-  reassigned or returned to `OPEN`.
-- Times are stored as ISO strings and displayed in the browser's local timezone.
-
-## Suggested demo walkthrough
-
-The submission video can cover the following in 2–5 minutes:
-
-1. Search and select shipments across the three status groups.
-2. Edit a delivery deadline or coordinate, save it, and show the map/list refresh.
-3. Move an `OPEN` shipment to `IN_TRANSIT`, demonstrating the required assignment rule.
-4. Open `/assignments`, select an assignment and shipment, and show the route map.
-5. Briefly explain feature-based organization and the paginated/virtualized list tradeoff.
+- shadcn/ui keeps components lightweight and easy to customize compared with Ant Design or
+  MUI, but the app owns more composition, styling, and design-system consistency work.
+- Zustand avoids Redux boilerplate for the small amount of shared client state in this app,
+  but Redux Toolkit would provide stronger conventions and tooling if state flows became
+  more complex.
