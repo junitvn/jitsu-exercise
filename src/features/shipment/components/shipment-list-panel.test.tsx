@@ -48,6 +48,14 @@ vi.mock('@/features/shipment/hooks/use-shipments', () => ({
   }),
 }))
 
+vi.mock('@/features/shipment/api/shipment.api', () => ({
+  fetchShipments: ({ status, search }: { status: string; search: string }) =>
+    Promise.resolve({
+      items: [],
+      totalCount: status === 'OPEN' && (!search || 'sony'.includes(search.toLowerCase())) ? 1 : 0,
+    }),
+}))
+
 vi.mock('@/hooks/use-media-query', () => ({
   useMediaQuery: () => false,
 }))
@@ -66,7 +74,7 @@ describe('ShipmentListPanel', () => {
     expect(screen.getByText('Sony')).toBeInTheDocument()
 
     await user.type(screen.getByLabelText('Search shipments'), 'zzz')
-    expect(await screen.findAllByText('No matching shipments')).toHaveLength(3)
+    expect(await screen.findByText('No matching shipments')).toBeInTheDocument()
 
     await user.click(screen.getByLabelText('Clear shipment search'))
     expect(await screen.findByText('Sony')).toBeInTheDocument()

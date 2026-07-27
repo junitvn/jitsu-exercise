@@ -24,7 +24,7 @@ export function SearchInput({
     <div className={cn('relative', className)}>
       <Search
         aria-hidden="true"
-        className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+        className="absolute top-8 left-3 size-4 -translate-y-1/2 text-muted-foreground"
       />
       <Input
         aria-label={props['aria-label']}
@@ -40,7 +40,7 @@ export function SearchInput({
           size="icon-xs"
           aria-label={clearLabel}
           onClick={() => onChange('')}
-          className="absolute top-1/2 right-1.5 -translate-y-1/2 rounded-full"
+          className="absolute top-8 right-1.5 -translate-y-1/2 rounded-full"
         >
           <X aria-hidden="true" />
         </Button>

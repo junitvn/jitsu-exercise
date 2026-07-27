@@ -9,6 +9,7 @@ import { DateTimePicker } from '@/components/ui/date-time-picker'
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { CopyableId } from '@/components/ui/copyable-id'
 import { DetailField } from '@/components/ui/detail-field'
 import { toast } from '@/components/ui/toast'
 import {
@@ -223,18 +224,27 @@ export function ShipmentDetailPanel({
             {statusStyles.label}
           </Badge>
         </div>
-        <p className="text-xs text-muted-foreground">{shipment.label}</p>
+        <p className="text-xs text-muted-foreground">
+          <CopyableId label="shipment label" value={shipment.label} />
+        </p>
       </div>
 
       {/* Read-only fields */}
       <dl className="grid grid-cols-2 gap-3 text-sm">
+        <DetailField
+          label="Shipment ID"
+          value={<CopyableId label="shipment ID" value={shipment.id} />}
+        />
+        <DetailField
+          label="Assignment ID"
+          value={<CopyableId label="assignment ID" value={shipment.assignment_id} />}
+        />
         <DetailField label="Arrival date" value={formatDate(shipment.arrival_date)} />
         <DetailField
           label="Delivery by date"
           value={formatDate(shipment.delivery_by_date)}
         />
         <DetailField label="Warehouse ID" value={shipment.warehouse_id} />
-        <DetailField label="Assignment ID" value={shipment.assignment_id ?? 'Unassigned'} />
       </dl>
 
       {/* Editable fields */}
@@ -371,7 +381,7 @@ export function ShipmentDetailPanel({
           className="h-32 flex-none md:min-h-0 md:flex-1 md:basis-0"
         />
 
-        <div className="mt-auto flex w-full shrink-0 justify-end gap-2 pt-1 pb-2">
+        <div className="mt-auto flex w-full shrink-0 justify-end gap-2 pt-1 pb-2 sm:pb-0">
           <AlertDialog>
             <AlertDialogTrigger
               render={

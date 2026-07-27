@@ -7,11 +7,11 @@ import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { AssignmentDetailPanel } from '@/features/assignment/components/assignment-detail-panel'
 import { AssignmentGroup } from '@/features/assignment/components/assignment-group'
-import { ASSIGNMENT_STATUSES } from '@/features/assignment/components/assignment-status-styles'
 import { CreateAssignmentDialog } from '@/features/assignment/components/create-assignment-dialog'
 import { ShipmentDetailPanel } from '@/features/shipment/components/shipment-detail-panel'
 import { useAssignmentShipments } from '@/features/shipment/hooks/use-assignment-shipments'
 import { useUIStore } from '@/store/use-ui-store'
+import { DESKTOP_PANEL_WIDTH_STYLE, PANEL_SEARCH_INPUT_CLASS_NAME } from '@/utils/constants'
 
 export function AssignmentPage() {
   const [search, setSearch] = useState('')
@@ -49,7 +49,7 @@ export function AssignmentPage() {
 
   return (
     <main className="h-svh overflow-hidden bg-slate-50 md:p-4 dark:bg-slate-950">
-      <div className="mx-auto flex h-full max-w-[1600px] flex-col overflow-hidden border bg-background shadow-sm md:rounded-2xl">
+      <div className="flex h-full max-w-[1600px] flex-col overflow-hidden border bg-background shadow-sm md:rounded-2xl">
         <div className="space-y-3 px-3 md:px-4 md:py-4 border-b border-slate-200 dark:border-slate-800">
           <div className="hidden items-center gap-3 md:flex">
             <h1 className="text-xl font-semibold tracking-tight">Assignments</h1>
@@ -64,30 +64,29 @@ export function AssignmentPage() {
             </Button>
           </div>
         </div>
-        <div className="grid min-h-0 flex-1 px-1 grid-cols-1 overflow-hidden md:grid-cols-[320px_minmax(320px,440px)_minmax(0,1fr)] md:rounded-2xl">
-          <aside className="flex min-h-0 flex-col border-b bg-white md:border-r md:border-b-0 dark:bg-slate-950 px-2">
-            <div className="min-h-0 flex-1 overflow-auto dark:bg-slate-900/40">
+        <div
+          className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden md:grid-cols-[var(--desktop-panel-width)_var(--desktop-panel-width)_minmax(0,1fr)] md:rounded-2xl"
+          style={DESKTOP_PANEL_WIDTH_STYLE}
+        >
+          <aside className="flex min-h-0 flex-col border-b bg-white px-2 pb-2 md:border-r md:border-b-0 dark:bg-slate-950">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden dark:bg-slate-900/40">
               <SearchInput
                 aria-label="Search assignments"
                 placeholder="Search assignment…"
                 value={search}
                 onChange={setSearch}
                 clearLabel="Clear assignment search"
-                className="py-3 sm:py-2.5"
+                className={PANEL_SEARCH_INPUT_CLASS_NAME}
               />
               <h3 className="text-sm font-semibold py-2">{`All assignments`}</h3>
-              {ASSIGNMENT_STATUSES.map((status) => (
-                <AssignmentGroup
-                  key={status}
-                  status={status}
-                  search={debouncedSearch}
-                  selectedId={selectedAssignmentId}
-                  onSelect={(id) => {
-                    setSelectedAssignmentId(id)
-                    setSelectedShipmentId(undefined)
-                  }}
-                />
-              ))}
+              <AssignmentGroup
+                search={debouncedSearch}
+                selectedId={selectedAssignmentId}
+                onSelect={(id) => {
+                  setSelectedAssignmentId(id)
+                  setSelectedShipmentId(undefined)
+                }}
+              />
             </div>
           </aside>
 

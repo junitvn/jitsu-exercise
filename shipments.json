@@ -1357,6 +1357,19 @@
       "assignment_id": "asg_001",
       "lat": 32.92869620496016,
       "lng": -96.76322703801914
+    },
+    {
+      "client_name": "123",
+      "label": "123",
+      "status": "OPEN",
+      "arrival_date": "2026-07-27T14:24:46.038Z",
+      "delivery_by_date": "2026-07-30T14:24:00.000Z",
+      "eta": "2026-07-30T14:24:00.000Z",
+      "warehouse_id": "581",
+      "assignment_id": null,
+      "lat": 32.7767,
+      "lng": -96.797,
+      "id": "FcrqWKE"
     }
   ]
 }

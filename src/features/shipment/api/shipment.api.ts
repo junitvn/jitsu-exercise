@@ -18,6 +18,7 @@ export interface ShipmentsPage {
 interface FetchShipmentsParams {
   status: ShipmentStatus
   search?: string
+  assignmentId?: string
   page: number
   signal?: AbortSignal
 }
@@ -27,6 +28,7 @@ interface FetchShipmentsParams {
 export async function fetchShipments({
   status,
   search,
+  assignmentId,
   page,
   signal,
 }: FetchShipmentsParams): Promise<ShipmentsPage> {
@@ -34,6 +36,7 @@ export async function fetchShipments({
     signal,
     params: {
       status,
+      assignment_id: assignmentId,
       q: search || undefined,
       _page: page,
       _per_page: SHIPMENTS_PAGE_SIZE,

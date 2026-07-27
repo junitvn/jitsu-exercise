@@ -138,7 +138,7 @@ function SidebarLogo({ isCollapsed = false }: { isCollapsed?: boolean }) {
           <img
             src="/logo-jitsu-text.svg"
             alt=""
-            className="h-9 w-40 max-w-none object-contain sm:h-14"
+            className="h-9 max-w-none object-contain sm:h-14"
           />
         </span>
         <img
@@ -147,7 +147,7 @@ function SidebarLogo({ isCollapsed = false }: { isCollapsed?: boolean }) {
           aria-hidden="true"
           className={cn(
             'shrink-0 object-contain transition-[width,height,margin] duration-200',
-            isCollapsed ? 'h-9 w-10' : 'h-9 w-10 sm:h-10 sm:mb-2.5',
+            isCollapsed ? 'h-9 w-10' : 'h-9 sm:h-10 sm:mb-2.5',
           )}
         />
       </div>

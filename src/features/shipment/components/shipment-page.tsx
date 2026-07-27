@@ -8,6 +8,7 @@ import { CreateShipmentDialog } from '@/features/shipment/components/create-ship
 import { useShipment } from '@/features/shipment/hooks/use-shipment'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { useUIStore } from '@/store/use-ui-store'
+import { DESKTOP_PANEL_WIDTH_STYLE } from '@/utils/constants'
 
 /**
  * Shipment management page: a list panel (left) and a detail/edit panel (right).
@@ -65,7 +66,10 @@ export function ShipmentPage() {
           </Button>
         </header>
 
-        <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden md:grid-cols-[minmax(320px,350px)_minmax(0,1fr)]">
+        <div
+          className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden md:grid-cols-[var(--desktop-panel-width)_minmax(0,1fr)]"
+          style={DESKTOP_PANEL_WIDTH_STYLE}
+        >
           <ShipmentListPanel
             selectedId={selectedId}
             selectedStatus={selectedShipment?.status}
