@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Trash2 } from 'lucide-react'
+import { ClipboardList, Trash2 } from 'lucide-react'
 import { AsyncState } from '@/components/ui/async-state'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -78,7 +78,11 @@ export function AssignmentDetailPanel({
   if (!assignmentId) {
     return (
       <section className="hidden min-h-0 items-center justify-center p-4 text-sm text-muted-foreground md:flex">
-        <AsyncState variant="empty" message="Select an assignment" />
+        <AsyncState
+          variant="empty"
+          icon={<ClipboardList aria-hidden="true" />}
+          message="Select an assignment"
+        />
       </section>
     )
   }

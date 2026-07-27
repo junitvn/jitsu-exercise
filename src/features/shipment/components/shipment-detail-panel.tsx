@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Trash2 } from 'lucide-react'
+import { Package, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AsyncState } from '@/components/ui/async-state'
 import { Button } from '@/components/ui/button'
@@ -95,7 +95,13 @@ export function ShipmentDetailPanel({
   }, [shipment, form])
 
   if (!shipmentId) {
-    return <AsyncState variant="empty" message="Select a shipment to view details" />
+    return (
+      <AsyncState
+        variant="empty"
+        icon={<Package aria-hidden="true" />}
+        message="Select a shipment to view details"
+      />
+    )
   }
 
   if (isLoading) {

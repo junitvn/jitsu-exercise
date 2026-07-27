@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 interface AsyncStateProps {
   variant: 'loading' | 'error' | 'empty'
   message: ReactNode
+  icon?: ReactNode
   onRetry?: () => void
   retryLabel?: string
   className?: string
@@ -13,6 +14,7 @@ interface AsyncStateProps {
 export function AsyncState({
   variant,
   message,
+  icon,
   onRetry,
   retryLabel = 'Retry',
   className,
@@ -29,6 +31,11 @@ export function AsyncState({
         className,
       )}
     >
+      {icon ? (
+        <div className="p-3 text-muted-foreground [&_svg:not([class*='size-'])]:size-12">
+          {icon}
+        </div>
+      ) : null}
       <p>{message}</p>
       {onRetry ? (
         <Button type="button" variant="outline" size="sm" onClick={onRetry}>
