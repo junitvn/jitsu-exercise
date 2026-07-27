@@ -1,0 +1,1 @@
+export const ASSIGNMENT_PANEL_WIDTH = 'sm:w-48 md:w-60 lg:w-72';
