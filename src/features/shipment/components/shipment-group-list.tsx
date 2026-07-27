@@ -10,6 +10,7 @@ import { SHIPMENT_STATUS_STYLES } from '@/features/shipment/components/shipment-
 import type { ShipmentStatus } from '@/features/shipment/types/shipment'
 
 const ROW_HEIGHT = 72
+const LOAD_MORE_THRESHOLD = ROW_HEIGHT * 4
 const STATUSES: ShipmentStatus[] = ['OPEN', 'IN_TRANSIT', 'DELIVERED']
 
 interface ShipmentGroupListProps {
@@ -49,6 +50,7 @@ export function ShipmentGroupList({
       queryKey: ['shipments', 'status-count', status, search],
       queryFn: ({ signal }: { signal: AbortSignal }) =>
         fetchShipments({ status, search, page: 1, signal }),
+      enabled: status !== activeStatus,
       staleTime: 30_000,
     })),
   })
@@ -70,20 +72,17 @@ export function ShipmentGroupList({
 
   const virtualItems = virtualizer.getVirtualItems()
 
-  // Load the next page once the user has scrolled near the last rendered row.
-  useEffect(() => {
-    const lastItem = virtualItems.at(-1)
-    if (!lastItem) return
-    if (lastItem.index >= shipments.length - 1 && hasNextPage && !isFetchingNextPage) {
+  const handleScroll = () => {
+    const scrollElement = scrollRef.current
+    if (!scrollElement || scrollElement.scrollTop <= 0 || !hasNextPage || isFetchingNextPage) return
+
+    const distanceFromBottom =
+      scrollElement.scrollHeight - scrollElement.scrollTop - scrollElement.clientHeight
+
+    if (distanceFromBottom <= LOAD_MORE_THRESHOLD) {
       fetchNextPage()
     }
-  }, [
-    virtualItems,
-    hasNextPage,
-    isFetchingNextPage,
-    fetchNextPage,
-    shipments.length,
-  ])
+  }
 
   return (
     <section
@@ -134,6 +133,7 @@ export function ShipmentGroupList({
 
       <div
         ref={scrollRef}
+        onScroll={handleScroll}
         className="min-h-0 flex-1 overflow-auto overscroll-contain rounded-xl border bg-background"
       >
         {isLoading ? (

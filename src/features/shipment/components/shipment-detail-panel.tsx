@@ -67,8 +67,9 @@ export function ShipmentDetailPanel({
   className,
 }: ShipmentDetailPanelProps) {
   const { data: shipment, isLoading, isError, refetch } = useShipment(shipmentId)
-  const { data: assignments = [] } = useAssignments()
-  const { data: openAssignments = [] } = useAssignments('OPEN')
+  const hasSelectedShipment = Boolean(shipmentId)
+  const { data: assignments = [] } = useAssignments(undefined, '', hasSelectedShipment)
+  const { data: openAssignments = [] } = useAssignments('OPEN', '', hasSelectedShipment)
   const updateShipment = useUpdateShipment()
   const deleteShipment = useDeleteShipment()
 
