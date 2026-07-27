@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SearchInput } from '@/components/ui/search-input'
@@ -18,6 +19,7 @@ export function AssignmentPage() {
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | undefined>()
   const [selectedShipmentId, setSelectedShipmentId] = useState<string | undefined>()
   const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const navigate = useNavigate()
   const debouncedSearch = useDebouncedValue(search, 300)
   const { data: selectedAssignmentShipments = [] } = useAssignmentShipments(selectedAssignmentId)
   const isMobile = useMediaQuery('(max-width: 767px)')
@@ -31,10 +33,11 @@ export function AssignmentPage() {
       action: (
         <Button
           type="button"
-          aria-label="Create assignment"
+          size='sm'
+          aria-label="Create shipment"
           onClick={() => setIsCreateOpen(true)}
         >
-          <Plus size={24} color="#fff" />
+          <Plus size={14} color="#fff" />
           <span>Create</span>
         </Button>
       ),
@@ -83,6 +86,11 @@ export function AssignmentPage() {
                 search={debouncedSearch}
                 selectedId={selectedAssignmentId}
                 onSelect={(id) => {
+                  if (isMobile) {
+                    navigate(`/assignments/${id}`)
+                    return
+                  }
+
                   setSelectedAssignmentId(id)
                   setSelectedShipmentId(undefined)
                 }}
@@ -114,7 +122,14 @@ export function AssignmentPage() {
       {isCreateOpen && (
         <CreateAssignmentDialog
           onClose={() => setIsCreateOpen(false)}
-          onCreated={(assignment) => setSelectedAssignmentId(assignment.id)}
+          onCreated={(assignment) => {
+            if (isMobile) {
+              navigate(`/assignments/${assignment.id}`)
+              return
+            }
+
+            setSelectedAssignmentId(assignment.id)
+          }}
         />
       )}
 

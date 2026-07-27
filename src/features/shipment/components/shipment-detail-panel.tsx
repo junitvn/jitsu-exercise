@@ -121,6 +121,7 @@ export function ShipmentDetailPanel({
   const headerStatus = form.formState.dirtyFields.status ? targetStatus : shipment.status
   const statusStyles = SHIPMENT_STATUS_STYLES[headerStatus]
   const validTargetStatuses = [shipment.status, ...getValidTargetStatuses(shipment.status)]
+  const isStatusSelectDisabled = shipment.status === 'DELIVERED'
   const statusItems = validTargetStatuses.map((status) => ({
     label: SHIPMENT_STATUS_STYLES[status].label,
     value: status,
@@ -266,10 +267,11 @@ export function ShipmentDetailPanel({
                   shouldValidate: true,
                 })
               }}
+              disabled={isStatusSelectDisabled}
             >
               <SelectTrigger
                 id="status"
-                className="h-10 w-full bg-background"
+                className="h-10 w-full bg-background disabled:bg-input/50 disabled:opacity-70"
                 aria-invalid={!!form.formState.errors.status}
               >
                 <SelectValue placeholder="Select status" />

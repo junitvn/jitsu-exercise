@@ -30,10 +30,11 @@ export function ShipmentPage() {
       action: (
         <Button
           type="button"
+          size='sm'
           aria-label="Create shipment"
           onClick={() => setIsCreateOpen(true)}
         >
-          <Plus size={24} color="#fff" />
+          <Plus size={14} color="#fff" />
           <span>Create</span>
         </Button>
       ),

@@ -116,13 +116,13 @@ export function AssignmentDetailPanel({
   return (
     <section className="flex min-h-0 flex-col gap-[6px] overflow-hidden px-2 py-2 sm:px-2">
       <div className="shrink-0">
-        <div className="flex flex-row items-center justify-between gap-2">
+        <div className="hidden flex-row items-center justify-between gap-2 md:flex">
           <h2 className="text-2xl font-semibold">{assignment.label}</h2>
           <Badge variant="outline" className={statusStyles.badge}>
             {statusStyles.label}
           </Badge>
         </div>
-        <p className="text-sm text-muted-foreground">
+        <p className="hidden text-sm text-muted-foreground md:block">
           <CopyableId label="assignment ID" value={assignment.id} />
         </p>
       </div>
@@ -204,12 +204,12 @@ export function AssignmentDetailPanel({
         )}
       </div>
 
-      <div className="mt-auto flex shrink-0 flex-row items-end justify-end">
+      <div className="mt-auto flex w-full shrink-0 flex-row items-end justify-end">
         <Tooltip disabled={!deleteDisabledReason}>
           <TooltipTrigger
             render={
               <span
-                className="inline-flex"
+                className="inline-flex w-full"
                 tabIndex={deleteDisabledReason ? 0 : undefined}
               />
             }
@@ -220,6 +220,7 @@ export function AssignmentDetailPanel({
                   <Button
                     type="button"
                     variant="destructive"
+                    className="w-full"
                     disabled={Boolean(deleteDisabledReason)}
                   />
                 }

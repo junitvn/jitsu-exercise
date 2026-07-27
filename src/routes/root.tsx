@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NavLink, Outlet } from 'react-router'
+import { NavLink, Outlet, useLocation } from 'react-router'
 import { ChevronsLeft, ChevronsRight, ClipboardList, PackageSearch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -11,16 +11,27 @@ const navigationItems = [
 ]
 
 export function RootLayout() {
+  const { pathname } = useLocation()
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true)
   const mobileHeaderTitle = useUIStore((state) => state.mobileHeaderTitle)
   const mobileHeaderAction = useUIStore((state) => state.mobileHeaderAction)
+  const showMobileHeaderLogo = navigationItems.some(({ to }) => pathname === to)
 
   return (
     <div className="flex min-h-svh bg-slate-50 dark:bg-slate-950">
       <header className="fixed inset-x-0 top-0 z-40 flex h-14 items-center border-b bg-background/95 px-3 shadow-sm backdrop-blur md:hidden">
+        {showMobileHeaderLogo && (
+          <img
+            src="/logo-jitsu-icon.svg"
+            alt=""
+            className="h-7 w-4 mr-2 max-w-none object-contain sm:h-14"
+          />
+        )}
         <div className="min-w-0 flex-1 pr-2">
-          {mobileHeaderTitle && (
-            <div className="truncate text-xl font-semibold tracking-tight">{mobileHeaderTitle}</div>
+          {typeof mobileHeaderTitle === 'string' ? (
+            <div className="truncate text-[22px] md:text-lg font-semibold tracking-tight">{mobileHeaderTitle}</div>
+          ) : (
+            mobileHeaderTitle && <div className="min-w-0">{mobileHeaderTitle}</div>
           )}
         </div>
         {mobileHeaderAction}
@@ -42,7 +53,7 @@ export function RootLayout() {
 
       <BottomTabNavigation />
 
-      <div className="min-w-0 flex-1 md:pt-0 [&>main]:h-[calc(100svh-3.3rem)] md:[&>main]:h-svh">
+      <div className="min-w-0 flex-1 md:pt-0 pt-14 [&>main]:h-[calc(100svh-6.75rem)] md:[&>main]:h-svh">
         <Outlet />
       </div>
     </div>

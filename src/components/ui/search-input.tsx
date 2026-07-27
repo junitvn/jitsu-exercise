@@ -31,7 +31,7 @@ export function SearchInput({
         placeholder={placeholder}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-11 rounded-xl pr-9 pl-9 dark:bg-slate-900"
+        className="h-11 rounded-xl pr-9 pl-9 text-sm md:text-base dark:bg-slate-900"
       />
       {value ? (
         <Button
