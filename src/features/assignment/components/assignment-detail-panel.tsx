@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { ClipboardList, Trash2 } from 'lucide-react'
 import { AsyncState } from '@/components/ui/async-state'
 import { Badge } from '@/components/ui/badge'
@@ -45,9 +45,6 @@ export function AssignmentDetailPanel({
   const { data: assignment, isLoading, isError } = useAssignment(assignmentId)
   const { data: shipments = [] } = useAssignmentShipments(assignmentId)
   const deleteAssignment = useDeleteAssignment()
-  const selectedShipmentStatus = shipments.find(
-    (shipment) => shipment.id === selectedShipmentId,
-  )?.status
   const shipmentGroups = SHIPMENT_STATUS_FILTERS.map((status) => {
     if (status === 'ALL') {
       return {
@@ -68,12 +65,6 @@ export function AssignmentDetailPanel({
   })
   const activeShipmentGroup = shipmentGroups.find((group) => group.status === activeShipmentStatus)
     ?? shipmentGroups[0]
-
-  useEffect(() => {
-    if (selectedShipmentStatus) {
-      setActiveShipmentStatus(selectedShipmentStatus === 'OPEN' ? 'ALL' : selectedShipmentStatus)
-    }
-  }, [selectedShipmentStatus])
 
   if (!assignmentId) {
     return (
