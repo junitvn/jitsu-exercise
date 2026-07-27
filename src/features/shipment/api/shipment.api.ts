@@ -70,11 +70,18 @@ export async function updateShipment(shipment: Shipment): Promise<Shipment> {
 
 export async function createShipment(shipment: ShipmentCreateInput): Promise<Shipment> {
   const response = await apiClient.post<Shipment>('/shipments', shipment)
+
+  if (response.data.assignment_id) {
+    await syncAssignmentShipmentCounts([response.data.assignment_id])
+  }
+
   return response.data
 }
 
 export async function deleteShipment(id: string): Promise<void> {
+  const existingShipment = await fetchShipmentById(id)
   await apiClient.delete(`/shipments/${id}`)
+  await syncAssignmentShipmentCounts([existingShipment.assignment_id])
 }
 
 export async function fetchShipmentsByAssignment(assignmentId: string): Promise<Shipment[]> {

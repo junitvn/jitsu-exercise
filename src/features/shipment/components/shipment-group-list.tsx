@@ -2,8 +2,9 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { ChevronDown, LoaderCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { formatDateOnly, formatTime } from '@/utils/format-date'
+import { formatTime } from '@/utils/format-date'
 import { useShipments } from '@/features/shipment/hooks/use-shipments'
+import { ShipmentItem } from '@/features/shipment/components/shipment-item'
 import { SHIPMENT_STATUS_STYLES } from '@/features/shipment/components/shipment-status-styles'
 import type { ShipmentStatus } from '@/features/shipment/types/shipment'
 
@@ -15,7 +16,7 @@ interface ShipmentGroupListProps {
   isMobile: boolean
   selectedId: string | undefined
   selectedStatus: ShipmentStatus | undefined
-  onSelect: (id: string, status: ShipmentStatus) => void
+  onSelect: (id: string) => void
 }
 
 /**
@@ -157,11 +158,11 @@ export function ShipmentGroupList({
                 const isSelected = selectedId === shipment.id
 
                 return (
-                  <button
+                  <ShipmentItem
                     key={shipment.id}
-                    type="button"
-                    aria-current={isSelected ? 'true' : undefined}
-                    onClick={() => onSelect(shipment.id, shipment.status)}
+                    shipment={shipment}
+                    isSelected={isSelected}
+                    onSelect={() => onSelect(shipment.id)}
                     style={{
                       position: 'absolute',
                       top: 0,
@@ -170,39 +171,8 @@ export function ShipmentGroupList({
                       height: virtualRow.size,
                       transform: `translateY(${virtualRow.start}px)`,
                     }}
-                    className={cn(
-                      'relative flex w-full flex-row gap-0.5 border-t border-black/5 bg-transparent px-3 text-left transition-colors first:border-t-0 hover:bg-muted/50 dark:border-white/5',
-                      isSelected && 'bg-muted/40 pl-7 hover:bg-muted/40',
-                    )}
-                  >
-                    {isSelected && (
-                      <div
-                        className="absolute inset-y-2 left-3 w-2.5 rounded-l-full border-y-[2.5px] border-l-[5px] border-r-0 border-primary"
-                        aria-hidden="true"
-                      />
-                    )}
-                    <div className="flex w-full flex-col justify-center gap-0.5">
-                      <span className="flex w-full flex-row items-center justify-between">
-                        <span
-                          className={cn(
-                            'truncate text-sm font-medium',
-                            isSelected && 'font-semibold text-primary',
-                          )}
-                        >
-                          {shipment.client_name}
-                        </span>
-                        <span className="shrink-0 text-[12px] tabular-nums text-muted-foreground">
-                          {formatDateOnly(shipment.arrival_date)}
-                        </span>
-                      </span>
-                      <span className="flex w-full items-center justify-between gap-2 text-xs text-muted-foreground">
-                        <span className="truncate">{shipment.label}</span>
-                        <span className="shrink-0 text-[12px] tabular-nums">
-                          {formatTime(shipment.arrival_date)}
-                        </span>
-                      </span>
-                    </div>
-                  </button>
+                    detailMeta={formatTime(shipment.arrival_date)}
+                  />
                 )
               })}
             </div>

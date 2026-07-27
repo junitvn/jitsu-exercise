@@ -1,7 +1,5 @@
 import { useState } from 'react'
-import { Search, X } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/ui/search-input'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { ShipmentGroupList } from '@/features/shipment/components/shipment-group-list'
@@ -12,7 +10,7 @@ const STATUSES: ShipmentStatus[] = ['OPEN', 'IN_TRANSIT', 'DELIVERED']
 interface ShipmentListPanelProps {
   selectedId: string | undefined
   selectedStatus: ShipmentStatus | undefined
-  onSelect: (id: string, status: ShipmentStatus) => void
+  onSelect: (id: string) => void
 }
 
 /**
@@ -28,31 +26,14 @@ export function ShipmentListPanel({ selectedId, selectedStatus, onSelect }: Ship
   return (
     <aside className="flex min-h-0 flex-col border-b bg-white md:border-r md:border-b-0 dark:bg-slate-950">
       <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-2 md:overflow-hidden dark:bg-slate-900/40">
-        <div className="relative py-1 pt-3 sm:pt-2.5">
-          <Search
-            aria-hidden="true"
-            className="absolute top-1/2 left-3 size-4 -translate-y-1 text-muted-foreground"
-          />
-          <Input
-            aria-label="Search shipments"
-            placeholder="Search client or label…"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            className="h-11 rounded-xl pr-9 pl-9 dark:bg-slate-900"
-          />
-          {search && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-xs"
-              aria-label="Clear shipment search"
-              onClick={() => setSearch('')}
-              className="absolute top-1/2 right-1.5 -translate-y-1/2 rounded-full"
-            >
-              <X aria-hidden="true" />
-            </Button>
-          )}
-        </div>
+        <SearchInput
+          aria-label="Search shipments"
+          placeholder="Search client or label…"
+          value={search}
+          onChange={setSearch}
+          clearLabel="Clear shipment search"
+          className="py-1 pt-3 sm:pt-2.5"
+        />
         {STATUSES.map((status) => (
           <ShipmentGroupList
             key={status}

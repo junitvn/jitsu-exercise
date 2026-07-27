@@ -23,8 +23,12 @@ export function getTransitionError(
     return `${shipment.status} cannot transition to ${nextStatus}.`
   }
 
-  if (shipment.status === 'OPEN' && nextStatus === 'IN_TRANSIT' && !assignmentId) {
-    return 'Select an assignment before moving an open shipment into transit.'
+  if (nextStatus === 'IN_TRANSIT' && !assignmentId) {
+    return 'Select an assignment before moving a shipment into transit.'
+  }
+
+  if (nextStatus === 'DELIVERED' && !assignmentId) {
+    return 'A delivered shipment must keep its assignment.'
   }
 
   return null
@@ -35,19 +39,16 @@ export function applyShipmentTransition(
   nextStatus: ShipmentStatus,
   assignmentId?: string | null,
 ): Shipment {
-  const transitionError = getTransitionError(shipment, nextStatus, assignmentId)
+  const nextAssignmentId = nextStatus === 'OPEN' ? null : assignmentId ?? shipment.assignment_id
+  const transitionError = getTransitionError(shipment, nextStatus, nextAssignmentId)
 
   if (transitionError) {
     throw new Error(transitionError)
   }
 
-  if (shipment.status === 'IN_TRANSIT' && nextStatus === 'OPEN') {
+  if (nextStatus === 'OPEN') {
     return { ...shipment, status: nextStatus, assignment_id: null }
   }
 
-  if (shipment.status === 'OPEN' && nextStatus === 'IN_TRANSIT') {
-    return { ...shipment, status: nextStatus, assignment_id: assignmentId }
-  }
-
-  return { ...shipment, status: nextStatus, assignment_id: assignmentId ?? null }
+  return { ...shipment, status: nextStatus, assignment_id: nextAssignmentId }
 }

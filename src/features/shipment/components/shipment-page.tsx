@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { ShipmentListPanel } from '@/features/shipment/components/shipment-list-panel'
 import { ShipmentDetailPanel } from '@/features/shipment/components/shipment-detail-panel'
 import { CreateShipmentDialog } from '@/features/shipment/components/create-shipment-dialog'
+import { useShipment } from '@/features/shipment/hooks/use-shipment'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { useUIStore } from '@/store/use-ui-store'
-import type { ShipmentStatus } from '@/features/shipment/types/shipment'
 
 /**
  * Shipment management page: a list panel (left) and a detail/edit panel (right).
@@ -15,8 +16,8 @@ import type { ShipmentStatus } from '@/features/shipment/types/shipment'
  */
 export function ShipmentPage() {
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined)
-  const [selectedStatus, setSelectedStatus] = useState<ShipmentStatus | undefined>(undefined)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const { data: selectedShipment } = useShipment(selectedId)
   const isMobile = useMediaQuery('(max-width: 767px)')
   const setMobileHeader = useUIStore((state) => state.setMobileHeader)
   const clearMobileHeader = useUIStore((state) => state.clearMobileHeader)
@@ -40,14 +41,12 @@ export function ShipmentPage() {
     return clearMobileHeader
   }, [clearMobileHeader, setMobileHeader])
 
-  const selectShipment = (id: string, status: ShipmentStatus) => {
+  const selectShipment = (id: string) => {
     setSelectedId(id)
-    setSelectedStatus(status)
   }
 
   const clearSelectedShipment = () => {
     setSelectedId(undefined)
-    setSelectedStatus(undefined)
   }
 
   return (
@@ -69,7 +68,7 @@ export function ShipmentPage() {
         <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden md:grid-cols-[minmax(320px,350px)_minmax(0,1fr)]">
           <ShipmentListPanel
             selectedId={selectedId}
-            selectedStatus={selectedStatus}
+            selectedStatus={selectedShipment?.status}
             onSelect={selectShipment}
           />
           <section className="hidden min-h-0 overflow-hidden md:block">
@@ -82,34 +81,21 @@ export function ShipmentPage() {
         </div>
       </div>
 
-      {showMobileSheet && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Shipment details"
-          className="fixed inset-0 z-50 md:hidden"
-        >
-          <button
-            type="button"
-            aria-label="Close shipment details"
-            onClick={clearSelectedShipment}
-            className="absolute inset-0 bg-black/35"
+      <Sheet open={Boolean(showMobileSheet)} onOpenChange={(open) => !open && clearSelectedShipment()}>
+        <SheetContent side="bottom" aria-label="Shipment details" className="md:hidden">
+          <ShipmentDetailPanel
+            shipmentId={selectedId}
+            onClose={clearSelectedShipment}
+            onDeleted={clearSelectedShipment}
+            className="max-h-[85svh]"
           />
-          <div className="absolute inset-x-0 bottom-0 overflow-hidden rounded-t-2xl border bg-background shadow-2xl">
-            <ShipmentDetailPanel
-              shipmentId={selectedId}
-              onClose={clearSelectedShipment}
-              onDeleted={clearSelectedShipment}
-              className="max-h-[85svh]"
-            />
-          </div>
-        </div>
-      )}
+        </SheetContent>
+      </Sheet>
 
       {isCreateOpen && (
         <CreateShipmentDialog
           onClose={() => setIsCreateOpen(false)}
-          onCreated={(shipment) => selectShipment(shipment.id, shipment.status)}
+          onCreated={(shipment) => selectShipment(shipment.id)}
         />
       )}
     </main>

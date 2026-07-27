@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router'
 import { ChevronsLeft, ChevronsRight, ClipboardList, Menu, PackageSearch } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 import { useUIStore } from '@/store/use-ui-store'
 
@@ -11,7 +13,7 @@ const navigationItems = [
 
 export function RootLayout() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true)
   const mobileHeaderTitle = useUIStore((state) => state.mobileHeaderTitle)
   const mobileHeaderAction = useUIStore((state) => state.mobileHeaderAction)
   const location = useLocation()
@@ -23,15 +25,16 @@ export function RootLayout() {
   return (
     <div className="flex min-h-svh bg-slate-50 dark:bg-slate-950">
       <header className="fixed inset-x-0 top-0 z-40 flex h-14 items-center border-b bg-background/95 px-3 shadow-sm backdrop-blur md:hidden">
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon-lg"
           aria-label="Open menu"
           aria-expanded={isMobileMenuOpen}
           onClick={() => setIsMobileMenuOpen(true)}
-          className="inline-flex size-9 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <Menu aria-hidden="true" className="size-5" />
-        </button>
+        </Button>
         <div className="min-w-0 flex-1 px-2">
           {mobileHeaderTitle && (
             <div className="truncate text-xl font-semibold tracking-tight">{mobileHeaderTitle}</div>
@@ -54,22 +57,18 @@ export function RootLayout() {
         />
       </aside>
 
-      {isMobileMenuOpen && (
-        <div role="dialog" aria-modal="true" aria-label="Navigation menu" className="fixed inset-0 z-50 md:hidden">
-          <button
-            type="button"
-            aria-label="Close menu"
-            onClick={() => setIsMobileMenuOpen(false)}
-            className="absolute inset-0 bg-black/35"
-          />
-          <aside className="absolute inset-y-0 left-0 flex w-72 max-w-[82vw] flex-col overflow-hidden border-r bg-background px-3 pt-3 shadow-2xl">
-            <div className="flex items-center justify-between mb-4">
-              <SidebarLogo />
-            </div>
-            <SidebarNavigation />
-          </aside>
-        </div>
-      )}
+      <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+        <SheetContent
+          side="left"
+          aria-label="Navigation menu"
+          className="flex flex-col px-3 pt-3 md:hidden"
+        >
+          <div className="mb-4 flex items-center justify-between">
+            <SidebarLogo />
+          </div>
+          <SidebarNavigation />
+        </SheetContent>
+      </Sheet>
 
       <div className="min-w-0 flex-1 pt-14 md:pt-0 [&>main]:h-[calc(100svh-3.5rem)] md:[&>main]:h-svh">
         <Outlet />
@@ -94,9 +93,10 @@ function SidebarFooter({
   onToggle: () => void
 }) {
   return (
-    <div className={cn('mt-auto border-t pt-3', isCollapsed ? 'flex justify-center' : '')}>
-      <button
+    <div className={cn('mt-auto pt-3', isCollapsed ? 'flex justify-center' : '')}>
+      <Button
         type="button"
+        variant="ghost"
         aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         aria-expanded={!isCollapsed}
         onClick={onToggle}
@@ -110,8 +110,7 @@ function SidebarFooter({
         ) : (
           <ChevronsLeft aria-hidden="true" className="size-4" />
         )}
-        <span className={cn(isCollapsed && 'sr-only')}>{isCollapsed ? 'Expand' : 'Collapse'}</span>
-      </button>
+      </Button>
     </div>
   )
 }
@@ -121,7 +120,7 @@ function SidebarLogo({ isCollapsed = false }: { isCollapsed?: boolean }) {
     <div
       role="img"
       aria-label="Jitsu"
-      className={cn('flex min-w-0 items-center', isCollapsed ? 'justify-center' : 'h-11 flex-1')}
+      className={cn('flex min-w-0 items-center', isCollapsed ? 'justify-center h-10' : 'h-10 flex-1 pt-2')}
     >
       <div
         className={cn(

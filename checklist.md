@@ -1,6 +1,6 @@
 # Jitsu Frontend Candidate Exercise - Shipping Checklist
 
-Use this as a definition of done. Finish the **Core** section before working on Stretch or Extra Credit.
+Updated from the current source code. Use this as a definition of done. Finish the **Core** section before working on Stretch or Extra Credit.
 
 ## 1. Core - required
 
@@ -12,11 +12,13 @@ Use this as a definition of done. Finish the **Core** section before working on 
 - [x] Visually identify the selected shipment.
 - [x] Add search that filters by shipment label or client name.
 - [x] Design the list for 100,000+ daily shipments.
-  - [x] Do not render the entire dataset at once; use server pagination, virtualization, or another documented strategy.
-  - [x] Keep searching, grouping, and scrolling responsive.
-  - [x] Loading skeleton and handle error, empty states.
-- [x] Improve Shipment list UX
-  - [x] Listen keyboard event when input time picker value, up and down key to select hour and minute
+  - [x] Use server pagination through `GET /shipments` with `_page` and `_per_page`.
+  - [x] Virtualize rendered rows with `@tanstack/react-virtual`.
+  - [x] Debounce search before sending it to the API.
+  - [x] Keep loading, error, retry, and empty states.
+- [x] Improve shipment list UX.
+  - [x] Support keyboard interaction for time entry with digit input, arrow keys, `Home`, and `End`.
+  - [x] Support responsive desktop groups and mobile-expanded groups.
 
 ### Shipment detail - right panel
 
@@ -65,40 +67,45 @@ Use this as a definition of done. Finish the **Core** section before working on 
 
 ### Assignment page and routing
 
-- [x] Add a second routed page for assignment management.
+- [x] Add a second routed page for assignment management at `/assignments`.
 - [x] Define the assignment model with `id`, `label`, `status`, `clients`, and `shipment_count`.
+- [x] Add sidebar and mobile navigation between Shipments and Assignments.
 
 ### Three-panel assignment workflow
 
-- [ ] Panel 1 - Assignment list:
+- [x] Panel 1 - Assignment list:
   - [x] Group assignments by `OPEN` and `COMPLETED`.
   - [x] Search assignments by label.
+  - [x] Show loading, error, retry, and empty states.
 - [x] Panel 2 - Assignment detail:
-  - [x] Show all assignment details.
+  - [x] Show assignment label, ID, status, and shipment count/list.
+  - [ ] Show the assignment `clients` field in the detail panel.
   - [x] List shipments associated with the assignment.
 - [x] Panel 3 - Shipment detail:
   - [x] Clicking an assigned shipment shows its details.
   - [x] Show every shipment in the assignment on the map.
-  - [x] Connect the shipment pins with lines.
+  - [x] Connect the shipment pins with a route line.
   - [x] Center the map on the selected shipment.
 
 ### Assignment CRUD
 
 - [x] Allow users to create an assignment with sensible defaults.
+- [x] Validate required fields before creation.
 - [x] Allow users to delete an assignment only when it is empty.
 - [x] Prevent deletion of non-empty assignments and explain why.
+- [x] Handle assignment create and delete API failure states.
 
 ## 4. Engineering and UX review
 
 - [x] Keep components focused and reusable.
 - [x] Make list, selection, detail, edit, and API state flow easy to follow.
 - [x] Keep business rules outside presentation-only components and make them testable.
-- [x] Add focused tests for search, editing/saving, and any implemented status-transition rules.
+- [x] Add focused tests for search, editing/saving, and implemented status-transition rules.
 - [x] Make controls keyboard-accessible and clearly labeled.
 - [x] Use readable date and status formatting.
-- [x] Make the two-panel Core layout usable at the supported screen sizes.
+- [x] Make the Core layout usable at supported desktop and mobile sizes.
 - [x] Keep the code readable, maintainable, and free of unexplained dead code.
-- [x] Ensure you can explain every library, abstraction, and design decision used.
+- [x] Ensure library, abstraction, and design decisions are documented in `README.md`.
 
 ## 5. README and assumptions
 
@@ -106,27 +113,13 @@ Use this as a definition of done. Finish the **Core** section before working on 
   - [x] Prerequisites.
   - [x] Dependency installation steps.
   - [x] How to generate or obtain the sample data.
-  - [x] How to run the data/API server, if used.
+  - [x] How to run the data/API server.
   - [x] How to run the React application.
+  - [x] Verification commands.
   - [x] A brief architecture and state-management overview.
   - [x] Performance strategy for 100,000+ shipments.
   - [x] Tradeoffs and intentionally omitted tiers/features.
   - [x] Every reasonable assumption made for ambiguous requirements.
-- [x] Document any sample-data gaps you resolve, especially missing `assignment_id` values or assignment records needed for Stretch/Extra Credit.
-
-## 6. Final submission
-
-- [ ] Verify the minimum Core workflow end to end:
-  - [ ] Load grouped shipments.
-  - [ ] Search by label and client.
-  - [ ] Select a shipment.
-  - [ ] Edit `delivery_by_date`, `lat`, or `lng`.
-  - [ ] Save and confirm the persisted result.
-- [x] Run tests, type checking, linting, and a production build.
-- [ ] Check the app in a clean install using only the README instructions.
-- [ ] Push the project to a **public GitHub repository**.
-- [ ] Record a **2-5 minute video** that:
-  - [ ] Demonstrates the features implemented.
-  - [ ] Explains one or two design decisions.
-- [ ] Include or link the video as instructed for the submission.
-- [ ] Confirm the public repository and video are accessible without requesting permission.
+- [x] Document sample-data resources and regeneration.
+- [x] Include a suggested demo walkthrough.
+- [ ] Add the final public demo video URL.

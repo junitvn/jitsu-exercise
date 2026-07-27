@@ -5,7 +5,7 @@ import 'leaflet-routing-machine'
 import 'leaflet-routing-machine/dist/leaflet-routing-machine.css'
 import { cn } from '@/lib/utils'
 import { SHIPMENT_STATUS_STYLES } from '@/features/shipment/components/shipment-status-styles'
-import type { Shipment } from '@/features/shipment/types/shipment'
+import type { Shipment, ShipmentStatus } from '@/features/shipment/types/shipment'
 
 interface ShipmentMapProps {
   shipments: Shipment[]
@@ -19,7 +19,10 @@ type ShipmentPoint = {
   id: string
   lat: number
   lng: number
+  status: ShipmentStatus
 }
+
+const SHIPMENT_STATUS_ORDER: ShipmentStatus[] = ['OPEN', 'IN_TRANSIT', 'DELIVERED']
 
 function getMarkerIcon(color: string) {
   return L.divIcon({
@@ -49,11 +52,12 @@ export function ShipmentMap({
     : [32.7767, -96.797]
   const routePoints = useMemo(
     () =>
-      getShortestShipmentOrder(
+      getStatusOrderedShipmentRoute(
         mappableShipments.map((shipment) => ({
           id: shipment.id,
           lat: shipment.lat,
           lng: shipment.lng,
+          status: shipment.status,
         })),
       ),
     [mappableShipments],
@@ -165,6 +169,12 @@ function MapViewport({
   }, [map, selectedShipment, shipments])
 
   return null
+}
+
+function getStatusOrderedShipmentRoute(points: ShipmentPoint[]) {
+  return SHIPMENT_STATUS_ORDER.flatMap((status) =>
+    getShortestShipmentOrder(points.filter((point) => point.status === status)),
+  )
 }
 
 function getShortestShipmentOrder(points: ShipmentPoint[]) {

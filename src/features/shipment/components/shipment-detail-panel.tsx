@@ -3,10 +3,11 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { AsyncState } from '@/components/ui/async-state'
 import { Button } from '@/components/ui/button'
 import { DateTimePicker } from '@/components/ui/date-time-picker'
+import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { DetailField } from '@/components/ui/detail-field'
 import { toast } from '@/components/ui/toast'
@@ -65,7 +66,7 @@ export function ShipmentDetailPanel({
   className,
 }: ShipmentDetailPanelProps) {
   const { data: shipment, isLoading, isError, refetch } = useShipment(shipmentId)
-  const { data: assignments = [] } = useAssignments('OPEN')
+  const { data: openAssignments = [] } = useAssignments('OPEN')
   const updateShipment = useUpdateShipment()
   const deleteShipment = useDeleteShipment()
 
@@ -92,74 +93,46 @@ export function ShipmentDetailPanel({
     })
   }, [shipment, form])
 
-  useEffect(() => {
-    if (updateShipment.isSuccess) {
-      toast.add({
-        type: 'success',
-        title: 'Saved',
-        description: 'Shipment details were updated.',
-      })
-    }
-  }, [updateShipment.isSuccess])
-
-  useEffect(() => {
-    if (updateShipment.isError) {
-      toast.add({
-        type: 'error',
-        title: 'Failed to save',
-        description: 'Try again.',
-      })
-    }
-  }, [updateShipment.isError])
-
-  useEffect(() => {
-    if (deleteShipment.isError) {
-      toast.add({
-        type: 'error',
-        title: 'Failed to delete',
-        description: 'Try again.',
-      })
-    }
-  }, [deleteShipment.isError])
-
   if (!shipmentId) {
-    return (
-      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-        Select a shipment to view details
-      </div>
-    )
+    return <AsyncState variant="empty" message="Select a shipment to view details" />
   }
 
   if (isLoading) {
-    return <div className="p-4 text-sm text-muted-foreground">Loading…</div>
+    return <AsyncState variant="loading" message="Loading..." />
   }
 
   if (isError || !shipment) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-2 p-4 text-center text-sm">
-        <p className="text-destructive">Could not load shipment details.</p>
-        <Button type="button" variant="outline" size="sm" onClick={() => refetch()}>
-          Retry
-        </Button>
-      </div>
+      <AsyncState
+        variant="error"
+        message="Could not load shipment details."
+        onRetry={() => refetch()}
+      />
     )
   }
 
-  const statusStyles = SHIPMENT_STATUS_STYLES[shipment.status]
   const deliveryByDate = form.watch('delivery_by_date')
   const lat = form.watch('lat')
   const lng = form.watch('lng')
   const targetStatus = form.watch('status')
   const assignmentId = form.watch('assignment_id')
   const isDirty = form.formState.isDirty
+  const headerStatus = form.formState.dirtyFields.status ? targetStatus : shipment.status
+  const statusStyles = SHIPMENT_STATUS_STYLES[headerStatus]
   const validTargetStatuses = [shipment.status, ...getValidTargetStatuses(shipment.status)]
   const statusItems = validTargetStatuses.map((status) => ({
     label: SHIPMENT_STATUS_STYLES[status].label,
     value: status,
   }))
+  const hasCurrentAssignment =
+    Boolean(shipment.assignment_id) &&
+    openAssignments.some((assignment) => assignment.id === shipment.assignment_id)
   const assignmentItems = [
     { label: 'Unassigned', value: '' },
-    ...assignments.map((assignment) => ({
+    ...(!hasCurrentAssignment && shipment.assignment_id
+      ? [{ label: `Current assignment`, value: shipment.assignment_id }]
+      : []),
+    ...openAssignments.map((assignment) => ({
       label: assignment.label,
       value: assignment.id,
     })),
@@ -192,6 +165,21 @@ export function ShipmentDetailPanel({
       delivery_by_date: fromDatetimeLocalValue(values.delivery_by_date),
       lat: values.lat,
       lng: values.lng,
+    }, {
+      onSuccess: () => {
+        toast.add({
+          type: 'success',
+          title: 'Saved',
+          description: 'Shipment details were updated.',
+        })
+      },
+      onError: () => {
+        toast.add({
+          type: 'error',
+          title: 'Failed to save',
+          description: 'Try again.',
+        })
+      },
     })
   }
 
@@ -206,15 +194,31 @@ export function ShipmentDetailPanel({
         onDeleted?.()
         onClose?.()
       },
+      onError: () => {
+        toast.add({
+          type: 'error',
+          title: 'Failed to delete',
+          description: 'Try again.',
+        })
+      },
     })
   }
 
   return (
-    <div className={cn('relative flex h-full min-h-0 flex-col gap-4 overflow-hidden p-5 sm:px-4 sm:pt-2', className)}>
+    <div
+      className={cn(
+        'relative flex h-full min-h-0 flex-col gap-4 overflow-y-auto overscroll-contain p-5 sm:px-4 sm:pt-2 md:overflow-hidden',
+        className,
+      )}
+    >
       <div>
         <div className="flex flex-row justify-between items-center gap-2">
           <h2 className="text-2xl font-semibold">{shipment.client_name}</h2>
-          <Badge variant="outline" className={statusStyles.badge}>
+          <Badge
+            variant="outline"
+            className={statusStyles.badge}
+            aria-label={`Shipment status: ${statusStyles.label}`}
+          >
             <span className={cn('size-2.5 rounded-full', statusStyles.dot)} aria-hidden="true" />
             {statusStyles.label}
           </Badge>
@@ -234,10 +238,13 @@ export function ShipmentDetailPanel({
       </dl>
 
       {/* Editable fields */}
-      <form onSubmit={form.handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col gap-4 border-t pt-4">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col gap-4">
         <div className="grid gap-4 sm:grid-cols-2">
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="status">Status</Label>
+          <FormField
+            htmlFor="status"
+            label="Status"
+            error={form.formState.errors.status?.message}
+          >
             <Select
               items={statusItems}
               value={targetStatus}
@@ -271,13 +278,18 @@ export function ShipmentDetailPanel({
                 </SelectGroup>
               </SelectContent>
             </Select>
-            {form.formState.errors.status && (
-              <p className="text-xs text-destructive">{form.formState.errors.status.message}</p>
-            )}
-          </div>
+          </FormField>
 
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="assignment_id">Assignment</Label>
+          <FormField
+            htmlFor="assignment_id"
+            label="Assignment"
+            error={form.formState.errors.assignment_id?.message}
+            description={
+              !needsAssignment && shipment.status !== 'IN_TRANSIT'
+                ? 'Assignments are selected when moving a shipment into transit.'
+                : undefined
+            }
+          >
             <Select
               items={assignmentItems}
               value={assignmentId ?? ''}
@@ -310,16 +322,14 @@ export function ShipmentDetailPanel({
                 </SelectGroup>
               </SelectContent>
             </Select>
-            {form.formState.errors.assignment_id && (
-              <p className="text-xs text-destructive">
-                {form.formState.errors.assignment_id.message}
-              </p>
-            )}
-          </div>
+          </FormField>
         </div>
 
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="delivery_by_date">Delivery by date</Label>
+        <FormField
+          htmlFor="delivery_by_date"
+          label="Delivery by date"
+          error={form.formState.errors.delivery_by_date?.message}
+        >
           <DateTimePicker
             id="delivery_by_date"
             value={deliveryByDate}
@@ -331,16 +341,10 @@ export function ShipmentDetailPanel({
             }
             aria-invalid={!!form.formState.errors.delivery_by_date}
           />
-          {form.formState.errors.delivery_by_date && (
-            <p className="text-xs text-destructive">
-              {form.formState.errors.delivery_by_date.message}
-            </p>
-          )}
-        </div>
+        </FormField>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="lat">Latitude</Label>
+          <FormField htmlFor="lat" label="Latitude" error={form.formState.errors.lat?.message}>
             <Input
               id="lat"
               type="number"
@@ -348,12 +352,8 @@ export function ShipmentDetailPanel({
               aria-invalid={!!form.formState.errors.lat}
               {...form.register('lat', { valueAsNumber: true })}
             />
-            {form.formState.errors.lat && (
-              <p className="text-xs text-destructive">{form.formState.errors.lat.message}</p>
-            )}
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="lng">Longitude</Label>
+          </FormField>
+          <FormField htmlFor="lng" label="Longitude" error={form.formState.errors.lng?.message}>
             <Input
               id="lng"
               type="number"
@@ -361,20 +361,17 @@ export function ShipmentDetailPanel({
               aria-invalid={!!form.formState.errors.lng}
               {...form.register('lng', { valueAsNumber: true })}
             />
-            {form.formState.errors.lng && (
-              <p className="text-xs text-destructive">{form.formState.errors.lng.message}</p>
-            )}
-          </div>
+          </FormField>
         </div>
 
         <ShipmentMap
           shipments={mapShipments}
           selectedShipmentId={shipment.id}
           connectPins={shipments.length > 0}
-          className="min-h-0 flex-1 basis-0"
+          className="h-32 flex-none md:min-h-0 md:flex-1 md:basis-0"
         />
 
-        <div className="mt-auto flex w-full shrink-0 justify-end gap-2 pt-1">
+        <div className="mt-auto flex w-full shrink-0 justify-end gap-2 pt-1 pb-2">
           <AlertDialog>
             <AlertDialogTrigger
               render={
@@ -412,7 +409,6 @@ export function ShipmentDetailPanel({
             {updateShipment.isPending ? 'Saving…' : 'Save changes'}
           </Button>
         </div>
-
       </form>
     </div>
   )

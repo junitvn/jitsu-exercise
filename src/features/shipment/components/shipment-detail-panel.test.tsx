@@ -87,6 +87,10 @@ describe('ShipmentDetailPanel', () => {
         lat: 33.1,
         lng: -96.8,
       }),
+      expect.objectContaining({
+        onSuccess: expect.any(Function),
+        onError: expect.any(Function),
+      }),
     )
   })
 
@@ -99,8 +103,27 @@ describe('ShipmentDetailPanel', () => {
     await user.click(await screen.findByRole('option', { name: /in transit/i }))
     await user.click(screen.getByRole('button', { name: 'Save changes' }))
 
-    expect(await screen.findByText('Select an assignment before moving an open shipment into transit.')).toBeVisible()
+    expect(await screen.findByText('Select an assignment before moving a shipment into transit.')).toBeVisible()
     expect(screen.getByLabelText('Assignment')).toHaveAttribute('aria-invalid', 'true')
     expect(mocks.mutate).not.toHaveBeenCalled()
+  })
+
+  it('shows the unsaved status in the header badge and reverts when changed back', async () => {
+    const user = userEvent.setup()
+
+    render(<ShipmentDetailPanel shipmentId="shp_001" />)
+
+    expect(await screen.findByLabelText('Shipment status: Open')).toBeVisible()
+
+    await user.click(screen.getByLabelText('Status'))
+    await user.click(await screen.findByRole('option', { name: /in transit/i }))
+
+    expect(screen.getByLabelText('Shipment status: In transit')).toBeVisible()
+
+    await user.click(screen.getByLabelText('Status'))
+    await user.click(await screen.findByRole('option', { name: /^open$/i }))
+
+    expect(screen.getByLabelText('Shipment status: Open')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled()
   })
 })

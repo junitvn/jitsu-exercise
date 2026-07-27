@@ -36,11 +36,27 @@ describe('shipment status transitions', () => {
 
   it('requires an assignment when moving open shipments into transit', () => {
     expect(() => applyShipmentTransition(shipment, 'IN_TRANSIT')).toThrow(
-      'Select an assignment before moving an open shipment into transit.',
+      'Select an assignment before moving a shipment into transit.',
     )
 
     expect(applyShipmentTransition(shipment, 'IN_TRANSIT', 'asg_001')).toMatchObject({
       status: 'IN_TRANSIT',
+      assignment_id: 'asg_001',
+    })
+  })
+
+  it('requires delivered shipments to keep their assignment', () => {
+    expect(() =>
+      applyShipmentTransition({ ...shipment, status: 'IN_TRANSIT' }, 'DELIVERED'),
+    ).toThrow('A delivered shipment must keep its assignment.')
+
+    expect(
+      applyShipmentTransition(
+        { ...shipment, status: 'IN_TRANSIT', assignment_id: 'asg_001' },
+        'DELIVERED',
+      ),
+    ).toMatchObject({
+      status: 'DELIVERED',
       assignment_id: 'asg_001',
     })
   })
