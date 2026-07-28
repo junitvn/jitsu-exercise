@@ -79,7 +79,6 @@ Updated from the current source code. Use this as a definition of done. Finish t
   - [x] Show loading, error, retry, and empty states.
 - [x] Panel 2 - Assignment detail:
   - [x] Show assignment label, ID, status, and shipment count/list.
-  - [ ] Show the assignment `clients` field in the detail panel.
   - [x] List shipments associated with the assignment.
 - [x] Panel 3 - Shipment detail:
   - [x] Clicking an assigned shipment shows its details.
@@ -119,7 +118,6 @@ Updated from the current source code. Use this as a definition of done. Finish t
   - [x] A brief architecture and state-management overview.
   - [x] Performance strategy for 100,000+ shipments.
   - [x] Tradeoffs and intentionally omitted tiers/features.
-  - [x] Every reasonable assumption made for ambiguous requirements.
 - [x] Document sample-data resources and regeneration.
 - [x] Include a suggested demo walkthrough.
-- [ ] Add the final public demo video URL.
+- [x] Add the final public demo video URL.
