@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { NavLink, Outlet } from 'react-router'
+import { LoaderCircle } from 'lucide-react'
 import { ChevronsLeft, ChevronsRight, ClipboardList, PackageSearch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -31,8 +32,18 @@ export function RootLayout() {
       <BottomTabNavigation />
 
       <div className="min-w-0 flex-1 md:pt-0 pt-14 [&>main]:h-[calc(100svh-6.75rem)] md:[&>main]:h-svh">
-        <Outlet />
+        <Suspense fallback={<RouteLoadingFallback />}>
+          <Outlet />
+        </Suspense>
       </div>
+    </div>
+  )
+}
+
+function RouteLoadingFallback() {
+  return (
+    <div className="flex h-full w-full items-center justify-center">
+      <LoaderCircle className="size-6 animate-spin text-muted-foreground" aria-hidden="true" />
     </div>
   )
 }

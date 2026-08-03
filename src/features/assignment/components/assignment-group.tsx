@@ -1,13 +1,18 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { LoaderCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { StatusTabBar } from '@/components/ui/status-tab-bar'
-import { useAssignments } from '@/features/assignment/hooks/use-assignments'
+import { useAssignmentsInfinite } from '@/features/assignment/hooks/use-assignments-infinite'
+import { useAssignmentCounts } from '@/features/assignment/hooks/use-assignment-counts'
 import {
   ASSIGNMENT_STATUSES,
   ASSIGNMENT_STATUS_STYLES,
 } from '@/features/assignment/components/assignment-status-styles'
 import type { AssignmentStatus } from '@/features/assignment/types/assignment'
+
+const ROW_HEIGHT = 64
+const LOAD_MORE_THRESHOLD = ROW_HEIGHT * 4
 
 interface AssignmentGroupProps {
   search: string
@@ -17,28 +22,47 @@ interface AssignmentGroupProps {
 
 export function AssignmentGroup({ search, selectedId, onSelect }: AssignmentGroupProps) {
   const [activeStatus, setActiveStatus] = useState<AssignmentStatus>('OPEN')
-  const { data: assignments = [], isLoading, isError, refetch } = useAssignments(undefined, search)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const styles = ASSIGNMENT_STATUS_STYLES[activeStatus]
+
+  const countRequests = useMemo(
+    () =>
+      ASSIGNMENT_STATUSES.filter((status) => status !== activeStatus).map((status) => ({
+        key: status,
+        status,
+        search,
+      })),
+    [activeStatus, search],
+  )
+  const statusCounts = useAssignmentCounts(countRequests)
+
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isError, refetch } =
+    useAssignmentsInfinite(activeStatus, search)
+
+  const assignments = useMemo(() => data?.pages.flatMap((page) => page.items) ?? [], [data?.pages])
+  const totalCount = data?.pages[0]?.totalCount
+
   const selectedAssignmentStatus = assignments.find(
     (assignment) => assignment.id === selectedId,
   )?.status
-  const assignmentGroups = useMemo(
-    () =>
-      ASSIGNMENT_STATUSES.map((status) => ({
-        status,
-        assignments: assignments.filter((assignment) => assignment.status === status),
-        styles: ASSIGNMENT_STATUS_STYLES[status],
-      })),
-    [assignments],
-  )
-  const activeAssignmentGroup = assignmentGroups.find((group) => group.status === activeStatus)
-    ?? assignmentGroups[0]
-  const styles = ASSIGNMENT_STATUS_STYLES[activeStatus]
 
   useEffect(() => {
     if (selectedAssignmentStatus) {
       setActiveStatus(selectedAssignmentStatus)
     }
   }, [selectedAssignmentStatus])
+
+  const handleScroll = () => {
+    const scrollElement = scrollRef.current
+    if (!scrollElement || scrollElement.scrollTop <= 0 || !hasNextPage || isFetchingNextPage) return
+
+    const distanceFromBottom =
+      scrollElement.scrollHeight - scrollElement.scrollTop - scrollElement.clientHeight
+
+    if (distanceFromBottom <= LOAD_MORE_THRESHOLD) {
+      fetchNextPage()
+    }
+  }
 
   return (
     <section
@@ -49,15 +73,18 @@ export function AssignmentGroup({ search, selectedId, onSelect }: AssignmentGrou
         columns={2}
         activeKey={activeStatus}
         onChange={setActiveStatus}
-        items={assignmentGroups.map((group) => ({
-          key: group.status,
-          label: group.styles.label,
-          dot: group.styles.dot,
-          count: group.assignments.length,
+        items={ASSIGNMENT_STATUSES.map((status) => ({
+          key: status,
+          label: ASSIGNMENT_STATUS_STYLES[status].label,
+          dot: ASSIGNMENT_STATUS_STYLES[status].dot,
+          count:
+            status === activeStatus ? totalCount ?? assignments.length : statusCounts.get(status),
         }))}
       />
       <div
-        className="min-h-0 flex-1 overflow-auto rounded-xl border bg-background"
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="min-h-0 flex-1 overflow-auto overscroll-contain rounded-xl border bg-background"
       >
         {isLoading ? (
           <p className="p-3 text-sm text-muted-foreground">Loading...</p>
@@ -74,12 +101,12 @@ export function AssignmentGroup({ search, selectedId, onSelect }: AssignmentGrou
               Retry
             </Button>
           </div>
-        ) : activeAssignmentGroup.assignments.length === 0 ? (
+        ) : assignments.length === 0 ? (
           <p className="p-3 text-sm text-muted-foreground">
             {search ? 'No matching assignments' : `No ${styles.label.toLowerCase()} assignments`}
           </p>
         ) : (
-          activeAssignmentGroup.assignments.map((assignment) => {
+          assignments.map((assignment) => {
             const isSelected = selectedId === assignment.id
 
             return (
@@ -113,6 +140,13 @@ export function AssignmentGroup({ search, selectedId, onSelect }: AssignmentGrou
               </button>
             )
           })
+        )}
+
+        {isFetchingNextPage && (
+          <div className="sticky bottom-2 mx-auto flex w-fit items-center gap-1.5 rounded-full border bg-background/95 px-3 py-1 text-xs text-muted-foreground shadow-sm backdrop-blur">
+            <LoaderCircle className="size-3 animate-spin" aria-hidden="true" />
+            Loading more
+          </div>
         )}
       </div>
     </section>

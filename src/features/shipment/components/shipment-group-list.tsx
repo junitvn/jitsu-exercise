@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useVirtualizer } from '@tanstack/react-virtual'
 import { LoaderCircle } from 'lucide-react'
 import { StatusTabBar } from '@/components/ui/status-tab-bar'
 import { useShipments } from '@/features/shipment/hooks/use-shipments'
 import { useShipmentCounts } from '@/features/shipment/hooks/use-shipment-counts'
-import { ShipmentItem } from '@/features/shipment/components/shipment-item'
+import { VirtualizedShipmentList } from '@/features/shipment/components/virtualized-shipment-list'
 import { SHIPMENT_STATUS_STYLES } from '@/features/shipment/components/shipment-status-styles'
 import type { ShipmentStatus } from '@/features/shipment/types/shipment'
 
@@ -19,15 +18,6 @@ interface ShipmentGroupListProps {
   onSelect: (id: string) => void
 }
 
-/**
- * Status-grouped shipment list panel.
- *
- * Why virtualization + infinite scroll instead of loading everything:
- * a single day can have 100k+ shipments, so we only ask the API for
- * `SHIPMENTS_PAGE_SIZE` rows at a time (useShipments/useInfiniteQuery), and
- * only render the handful of rows currently visible in the scroll container
- * (useVirtualizer). Scrolling near the bottom fetches the next page.
- */
 export function ShipmentGroupList({
   search,
   selectedId,
@@ -63,15 +53,6 @@ export function ShipmentGroupList({
   const shipments = useMemo(() => data?.pages.flatMap((page) => page.items) ?? [], [data?.pages])
   const totalCount = data?.pages[0]?.totalCount
 
-  const virtualizer = useVirtualizer({
-    count: shipments.length,
-    getScrollElement: () => scrollRef.current,
-    estimateSize: () => ROW_HEIGHT,
-    overscan: 8,
-  })
-
-  const virtualItems = virtualizer.getVirtualItems()
-
   const handleScroll = () => {
     const scrollElement = scrollRef.current
     if (!scrollElement || scrollElement.scrollTop <= 0 || !hasNextPage || isFetchingNextPage) return
@@ -89,7 +70,7 @@ export function ShipmentGroupList({
       aria-label={`${styles.label} shipments`}
       className="flex min-h-0 flex-1 flex-col gap-2"
     >
-      <StatusTabBar
+      <StatusTabBar<ShipmentStatus>
         columns={3}
         activeKey={activeStatus}
         onChange={setActiveStatus}
@@ -133,29 +114,13 @@ export function ShipmentGroupList({
             {search ? 'No matching shipments' : 'No shipments'}
           </p>
         ) : (
-          <div style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
-            {virtualItems.map((virtualRow) => {
-              const shipment = shipments[virtualRow.index]
-              const isSelected = selectedId === shipment.id
-
-              return (
-                <ShipmentItem
-                  key={shipment.id}
-                  shipment={shipment}
-                  isSelected={isSelected}
-                  onSelect={onSelect}
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: virtualRow.size,
-                    transform: `translateY(${virtualRow.start}px)`,
-                  }}
-                />
-              )
-            })}
-          </div>
+          <VirtualizedShipmentList
+            shipments={shipments}
+            selectedId={selectedId}
+            onSelect={onSelect}
+            scrollRef={scrollRef}
+            estimateSize={ROW_HEIGHT}
+          />
         )}
 
         {isFetchingNextPage && (

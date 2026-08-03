@@ -1,8 +1,16 @@
+import { lazy } from 'react'
 import { createBrowserRouter } from 'react-router'
 import { RootLayout } from '@/routes/root'
-import { HomePage } from '@/routes/home'
-import { AssignmentsPage } from '@/routes/assignments'
-import { AssignmentDetailPage } from '@/features/assignment/components/assignment-detail-page'
+
+const HomePage = lazy(() => import('@/routes/home').then((m) => ({ default: m.HomePage })))
+const AssignmentsPage = lazy(() =>
+  import('@/routes/assignments').then((m) => ({ default: m.AssignmentsPage })),
+)
+const AssignmentDetailPage = lazy(() =>
+  import('@/features/assignment/components/assignment-detail-page').then((m) => ({
+    default: m.AssignmentDetailPage,
+  })),
+)
 
 export const router = createBrowserRouter([
   {

@@ -1,6 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { useVirtualizer } from '@tanstack/react-virtual'
-import { ClipboardList } from 'lucide-react'
+import { ClipboardList, LoaderCircle } from 'lucide-react'
 import { AsyncState } from '@/components/ui/async-state'
 import { Badge } from '@/components/ui/badge'
 import { ConfirmDeleteButton } from '@/components/ui/confirm-delete-button'
@@ -10,13 +9,23 @@ import { StatusTabBar } from '@/components/ui/status-tab-bar'
 import { useAssignment } from '@/features/assignment/hooks/use-assignment'
 import { useDeleteAssignment } from '@/features/assignment/hooks/use-delete-assignment'
 import { ASSIGNMENT_STATUS_STYLES } from '@/features/assignment/components/assignment-status-styles'
-import { useAssignmentShipments } from '@/features/shipment/hooks/use-assignment-shipments'
-import { ShipmentItem } from '@/features/shipment/components/shipment-item'
+import { useAssignmentShipmentsInfinite } from '@/features/shipment/hooks/use-assignment-shipments-infinite'
+import { useShipmentCounts } from '@/features/shipment/hooks/use-shipment-counts'
+import { VirtualizedShipmentList } from '@/features/shipment/components/virtualized-shipment-list'
 import { SHIPMENT_STATUS_STYLES } from '@/features/shipment/components/shipment-status-styles'
 
 const SHIPMENT_STATUS_FILTERS = ['ALL', 'IN_TRANSIT', 'DELIVERED'] as const
 type ShipmentStatusFilter = typeof SHIPMENT_STATUS_FILTERS[number]
 const ROW_HEIGHT = 72
+const LOAD_MORE_THRESHOLD = ROW_HEIGHT * 4
+
+function filterLabel(filter: ShipmentStatusFilter) {
+  return filter === 'ALL' ? 'All' : SHIPMENT_STATUS_STYLES[filter].label
+}
+
+function filterDot(filter: ShipmentStatusFilter) {
+  return filter === 'ALL' ? 'bg-muted-foreground' : SHIPMENT_STATUS_STYLES[filter].dot
+}
 
 interface AssignmentDetailPanelProps {
   assignmentId?: string
@@ -34,41 +43,43 @@ export function AssignmentDetailPanel({
   const [activeShipmentStatus, setActiveShipmentStatus] = useState<ShipmentStatusFilter>('ALL')
   const scrollRef = useRef<HTMLDivElement>(null)
   const { data: assignment, isLoading, isError } = useAssignment(assignmentId)
-  const { data: shipments = [] } = useAssignmentShipments(assignmentId)
   const deleteAssignment = useDeleteAssignment()
-  const shipmentGroups = useMemo(
-    () =>
-      SHIPMENT_STATUS_FILTERS.map((status) => {
-        if (status === 'ALL') {
-          return {
-            status,
-            shipments,
-            styles: {
-              label: 'All',
-              dot: 'bg-muted-foreground',
-            },
-          }
-        }
 
-        return {
-          status,
-          shipments: shipments.filter((shipment) => shipment.status === status),
-          styles: SHIPMENT_STATUS_STYLES[status],
-        }
-      }),
-    [shipments],
+  const activeStatus = activeShipmentStatus === 'ALL' ? undefined : activeShipmentStatus
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading: isLoadingShipments,
+  } = useAssignmentShipmentsInfinite(assignmentId, activeStatus)
+  const shipments = useMemo(() => data?.pages.flatMap((page) => page.items) ?? [], [data?.pages])
+  const activeTotalCount = data?.pages[0]?.totalCount
+
+  // Counts for the inactive real-status tabs (the "All" tab reads the
+  // assignment's own shipment_count, kept in sync on shipment writes).
+  const countRequests = useMemo(
+    () =>
+      assignmentId
+        ? (['IN_TRANSIT', 'DELIVERED'] as const)
+            .filter((status) => status !== activeShipmentStatus)
+            .map((status) => ({ key: status, status, assignmentId }))
+        : [],
+    [assignmentId, activeShipmentStatus],
   )
-  const activeShipmentGroup = shipmentGroups.find((group) => group.status === activeShipmentStatus)
-    ?? shipmentGroups[0]
-  // Only the visible rows are mounted -- an assignment can have a large
-  // shipment set, and this list previously rendered every row into the DOM.
-  const virtualizer = useVirtualizer({
-    count: activeShipmentGroup.shipments.length,
-    getScrollElement: () => scrollRef.current,
-    estimateSize: () => ROW_HEIGHT,
-    overscan: 8,
-  })
-  const virtualItems = virtualizer.getVirtualItems()
+  const statusCounts = useShipmentCounts(countRequests)
+
+  const handleScroll = () => {
+    const scrollElement = scrollRef.current
+    if (!scrollElement || scrollElement.scrollTop <= 0 || !hasNextPage || isFetchingNextPage) return
+
+    const distanceFromBottom =
+      scrollElement.scrollHeight - scrollElement.scrollTop - scrollElement.clientHeight
+
+    if (distanceFromBottom <= LOAD_MORE_THRESHOLD) {
+      fetchNextPage()
+    }
+  }
 
   if (!assignmentId) {
     return (
@@ -91,12 +102,20 @@ export function AssignmentDetailPanel({
   }
 
   const statusStyles = ASSIGNMENT_STATUS_STYLES[assignment.status]
-  const canDelete = shipments.length === 0
+  const canDelete = assignment.shipment_count === 0
   const deleteDisabledReason = deleteAssignment.isPending
     ? 'Deletion is in progress.'
     : !canDelete
       ? 'Remove all shipments before deleting this assignment.'
       : undefined
+
+  const tabCount = (filter: ShipmentStatusFilter) => {
+    if (filter === activeShipmentStatus) return activeTotalCount
+    if (filter === 'ALL') return assignment.shipment_count
+    return statusCounts.get(filter)
+  }
+
+  const activeLabel = filterLabel(activeShipmentStatus)
 
   const onDelete = () => {
     if (!canDelete) return
@@ -130,55 +149,49 @@ export function AssignmentDetailPanel({
         <div className="flex flex-row justify-between">
           <h3 className="text-sm font-semibold">{`Shipments`}</h3>
         </div>
-        {shipments.length === 0 ? (
+        {assignment.shipment_count === 0 ? (
           <p className="text-sm text-muted-foreground">No shipments assigned.</p>
         ) : (
           <section
-            aria-label={`${activeShipmentGroup.styles.label} shipments`}
+            aria-label={`${activeLabel} shipments`}
             className="flex min-h-0 flex-1 flex-col gap-2"
           >
             <StatusTabBar<ShipmentStatusFilter>
               columns={3}
               activeKey={activeShipmentStatus}
               onChange={setActiveShipmentStatus}
-              items={shipmentGroups.map((group) => ({
-                key: group.status,
-                label: group.styles.label,
-                dot: group.styles.dot,
-                count: group.shipments.length,
+              items={SHIPMENT_STATUS_FILTERS.map((filter) => ({
+                key: filter,
+                label: filterLabel(filter),
+                dot: filterDot(filter),
+                count: tabCount(filter),
               }))}
             />
             <div
               ref={scrollRef}
-              className="min-h-0 flex-1 overflow-auto rounded-xl border bg-background"
+              onScroll={handleScroll}
+              className="min-h-0 flex-1 overflow-auto overscroll-contain rounded-xl border bg-background"
             >
-              {activeShipmentGroup.shipments.length === 0 ? (
+              {isLoadingShipments ? (
+                <p className="p-3 text-sm text-muted-foreground">Loading...</p>
+              ) : shipments.length === 0 ? (
                 <p className="p-3 text-sm text-muted-foreground">
-                  No {activeShipmentGroup.styles.label.toLowerCase()} shipments.
+                  No {activeLabel.toLowerCase()} shipments.
                 </p>
               ) : (
-                <div style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
-                  {virtualItems.map((virtualRow) => {
-                    const shipment = activeShipmentGroup.shipments[virtualRow.index]
-                    const isSelected = selectedShipmentId === shipment.id
+                <VirtualizedShipmentList
+                  shipments={shipments}
+                  selectedId={selectedShipmentId}
+                  onSelect={onSelectShipment}
+                  scrollRef={scrollRef}
+                  estimateSize={ROW_HEIGHT}
+                />
+              )}
 
-                    return (
-                      <ShipmentItem
-                        key={shipment.id}
-                        shipment={shipment}
-                        isSelected={isSelected}
-                        onSelect={onSelectShipment}
-                        style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          width: '100%',
-                          height: virtualRow.size,
-                          transform: `translateY(${virtualRow.start}px)`,
-                        }}
-                      />
-                    )
-                  })}
+              {isFetchingNextPage && (
+                <div className="sticky bottom-2 mx-auto flex w-fit items-center gap-1.5 rounded-full border bg-background/95 px-3 py-1 text-xs text-muted-foreground shadow-sm backdrop-blur">
+                  <LoaderCircle className="size-3 animate-spin" aria-hidden="true" />
+                  Loading more
                 </div>
               )}
             </div>

@@ -1,4 +1,5 @@
-import { useEffect, useMemo } from 'react'
+import { lazy, Suspense, useEffect, useMemo } from 'react'
+import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Package } from 'lucide-react'
@@ -13,14 +14,7 @@ import { Badge } from '@/components/ui/badge'
 import { CopyableId } from '@/components/ui/copyable-id'
 import { DetailField } from '@/components/ui/detail-field'
 import { toast } from '@/components/ui/toast'
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { LabeledSelect } from '@/components/ui/labeled-select'
 import { formatDate, toDatetimeLocalValue, fromDatetimeLocalValue } from '@/utils/format-date'
 import { useAssignments } from '@/features/assignment/hooks/use-assignments'
 import { useShipment } from '@/features/shipment/hooks/use-shipment'
@@ -28,14 +22,19 @@ import { useUpdateShipment } from '@/features/shipment/hooks/use-update-shipment
 import { useDeleteShipment } from '@/features/shipment/hooks/use-delete-shipment'
 import { shipmentEditSchema, type ShipmentEditValues } from '@/features/shipment/schemas/shipment.schema'
 import { SHIPMENT_STATUS_STYLES } from '@/features/shipment/components/shipment-status-styles'
-import { ShipmentMap } from '@/features/shipment/components/shipment-map'
-import type { Shipment, ShipmentStatus } from '@/features/shipment/types/shipment'
+import type { Shipment } from '@/features/shipment/types/shipment'
 import {
   applyShipmentTransition,
   getTransitionError,
   getValidTargetStatuses,
 } from '@/features/shipment/lib/status-transitions'
 import { getAssignmentFieldState, getTransitionErrorField } from '@/features/shipment/lib/shipment-form'
+
+// Leaflet + leaflet-routing-machine are heavy and only needed once a shipment
+// is selected, so load them lazily instead of bundling them into the main chunk.
+const ShipmentMap = lazy(() =>
+  import('@/features/shipment/components/shipment-map').then((m) => ({ default: m.ShipmentMap })),
+)
 
 interface ShipmentDetailPanelProps {
   shipmentId: string | undefined
@@ -45,11 +44,6 @@ interface ShipmentDetailPanelProps {
   className?: string
 }
 
-/**
- * Right panel: shows every field of the selected shipment, with
- * delivery_by_date/lat/lng editable via a react-hook-form + zod form.
- * "Save" PUTs the full shipment (existing fields + edits) back to the API.
- */
 export function ShipmentDetailPanel({
   shipmentId,
   shipments = [],
@@ -75,7 +69,6 @@ export function ShipmentDetailPanel({
     },
   })
 
-  // Repopulate the form whenever a different shipment loads.
   useEffect(() => {
     if (!shipment) return
     form.reset({
@@ -89,15 +82,12 @@ export function ShipmentDetailPanel({
 
   const watchedLat = form.watch('lat')
   const watchedLng = form.watch('lng')
+  const debouncedLat = useDebouncedValue(watchedLat, 300)
+  const debouncedLng = useDebouncedValue(watchedLng, 300)
 
-  // Memoized so the map (and its O(n^2) route ordering) only recomputes when
-  // the shipment set or the edited position actually changes, not on every
-  // unrelated re-render of this panel. Hooks must run unconditionally, so
-  // this sits above the early returns below and tolerates `shipment` being
-  // undefined while the query is still loading.
   const editableMapShipment = useMemo(
-    () => (shipment ? { ...shipment, lat: Number(watchedLat), lng: Number(watchedLng) } : undefined),
-    [shipment, watchedLat, watchedLng],
+    () => (shipment ? { ...shipment, lat: Number(debouncedLat), lng: Number(debouncedLng) } : undefined),
+    [shipment, debouncedLat, debouncedLng],
   )
   const mapShipments = useMemo(() => {
     if (!shipment || !editableMapShipment) return []
@@ -266,13 +256,17 @@ export function ShipmentDetailPanel({
             label="Status"
             error={form.formState.errors.status?.message}
           >
-            <Select
+            <LabeledSelect
+              id="status"
               items={statusItems}
               value={targetStatus}
+              placeholder="Select status"
+              invalid={!!form.formState.errors.status}
+              disabled={isStatusSelectDisabled}
               onValueChange={(value) => {
                 if (!value) return
                 form.clearErrors(['status', 'assignment_id'])
-                form.setValue('status', value as ShipmentStatus, {
+                form.setValue('status', value, {
                   shouldDirty: true,
                   shouldValidate: true,
                 })
@@ -283,29 +277,16 @@ export function ShipmentDetailPanel({
                   })
                 }
               }}
-              disabled={isStatusSelectDisabled}
-            >
-              <SelectTrigger
-                id="status"
-                className="h-10 w-full bg-background disabled:bg-input/50 disabled:opacity-70"
-                aria-invalid={!!form.formState.errors.status}
-              >
-                <SelectValue placeholder="Select status" />
-              </SelectTrigger>
-              <SelectContent alignItemWithTrigger={false}>
-                <SelectGroup>
-                  {statusItems.map((status) => (
-                    <SelectItem className='flex flex-row py-3 items-center gap-2' key={status.value} value={status.value}>
-                      <span
-                        className={cn('size-2.5 mt-[5px] rounded-full', SHIPMENT_STATUS_STYLES[status.value].dot)}
-                        aria-hidden="true"
-                      />
-                      {status.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+              renderItem={(item) => (
+                <>
+                  <span
+                    className={cn('size-2.5 mt-[5px] rounded-full', SHIPMENT_STATUS_STYLES[item.value].dot)}
+                    aria-hidden="true"
+                  />
+                  {item.label}
+                </>
+              )}
+            />
           </FormField>
 
           <FormField
@@ -318,9 +299,13 @@ export function ShipmentDetailPanel({
                 : undefined
             }
           >
-            <Select
+            <LabeledSelect
+              id="assignment_id"
               items={assignmentItems}
               value={assignmentId ?? ''}
+              placeholder="Select assignment"
+              invalid={!!form.formState.errors.assignment_id}
+              disabled={isAssignmentSelectDisabled}
               onValueChange={(value) => {
                 form.clearErrors('assignment_id')
                 form.setValue('assignment_id', value || null, {
@@ -328,28 +313,15 @@ export function ShipmentDetailPanel({
                   shouldValidate: true,
                 })
               }}
-              disabled={isAssignmentSelectDisabled}
-            >
-              <SelectTrigger
-                id="assignment_id"
-                className="h-10 w-full bg-background disabled:bg-input/50 disabled:opacity-70"
-                aria-invalid={!!form.formState.errors.assignment_id}
-              >
-                <SelectValue placeholder="Select assignment" />
-              </SelectTrigger>
-              <SelectContent alignItemWithTrigger={false}>
-                <SelectGroup>
-                  {assignmentItems.map((assignment) => (
-                    <SelectItem className='flex flex-row py-3 items-center flex-start gap-2' key={assignment.value || 'unassigned'} value={assignment.value}>
-                      <span>{assignment.label}</span>
-                      {assignment.value ? (
-                        <span className='text-xs mt-[3px] text-muted-foreground'>{`#${assignment.value}`}</span>
-                      ) : null}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+              renderItem={(item) => (
+                <>
+                  <span>{item.label}</span>
+                  {item.value ? (
+                    <span className="text-xs mt-[3px] text-muted-foreground">{`#${item.value}`}</span>
+                  ) : null}
+                </>
+              )}
+            />
           </FormField>
         </div>
 
@@ -392,12 +364,18 @@ export function ShipmentDetailPanel({
           </FormField>
         </div>
 
-        <ShipmentMap
-          shipments={mapShipments}
-          selectedShipmentId={shipment.id}
-          connectPins={shipments.length > 0}
-          className="h-32 flex-none md:min-h-0 md:flex-1 md:basis-0"
-        />
+        <Suspense
+          fallback={
+            <div className="h-32 flex-none animate-pulse rounded-lg border bg-muted md:min-h-0 md:flex-1 md:basis-0" />
+          }
+        >
+          <ShipmentMap
+            shipments={mapShipments}
+            selectedShipmentId={shipment.id}
+            connectPins={shipments.length > 0}
+            className="h-32 flex-none md:min-h-0 md:flex-1 md:basis-0"
+          />
+        </Suspense>
 
         <div className="mt-auto flex w-full shrink-0 justify-end gap-2 pt-1 pb-2 sm:pb-0">
           <ConfirmDeleteButton

@@ -13,4 +13,6 @@ export const shipmentQueryKeys = {
   assignmentLists: () => ['assignment-shipments'] as const,
   assignmentList: (assignmentId: string) =>
     [...shipmentQueryKeys.assignmentLists(), assignmentId] as const,
+  assignmentPagedList: (assignmentId: string, status: ShipmentStatus | undefined) =>
+    [...shipmentQueryKeys.assignmentLists(), 'paged', assignmentId, status ?? 'all'] as const,
 }

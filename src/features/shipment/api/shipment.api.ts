@@ -1,30 +1,21 @@
 import { apiClient } from '@/api/client'
 import { fetchAssignmentById, updateAssignment } from '@/features/assignment/api/assignment.api'
 import type { Shipment, ShipmentCreateInput, ShipmentStatus } from '@/features/shipment/types/shipment'
-
-// Rows fetched per page, per status group. Keeping this small (instead of loading
-// all 100k+ shipments at once) is what makes the list usable at scale -- combined
-// with virtualization on the frontend, only a few pages ever sit in memory/DOM.
 export const SHIPMENTS_PAGE_SIZE = 50
 
 export interface ShipmentsPage {
   items: Shipment[]
-  // Total matching rows for this status/search, from the `X-Total-Count` header.
-  // The API's actual page size is not guaranteed to match what we request, so
-  // callers should use this (not `items.length`) to decide if more pages exist.
   totalCount: number | undefined
 }
 
 interface FetchShipmentsParams {
-  status: ShipmentStatus
+  status?: ShipmentStatus
   search?: string
   assignmentId?: string
   page: number
   signal?: AbortSignal
 }
 
-// GET /shipments?status=OPEN&q=search&_page=1&_per_page=50
-// `q` is a json-server full-text search param, which covers both client_name and label.
 export async function fetchShipments({
   status,
   search,
@@ -58,10 +49,6 @@ interface FetchShipmentCountParams {
   signal?: AbortSignal
 }
 
-// Same endpoint as fetchShipments, but asks for a single row (`_per_page: 1`)
-// since all we need is the `X-Total-Count` header. Callers that only want a
-// count (status tabs, assignment badges, shipment_count sync) should use this
-// instead of paging through full rows.
 export async function fetchShipmentCount({
   status,
   search,
@@ -83,15 +70,11 @@ export async function fetchShipmentCount({
   return totalCountHeader ? Number(totalCountHeader) : response.data.length
 }
 
-// GET /shipments/:id
 export async function fetchShipmentById(id: string): Promise<Shipment> {
   const response = await apiClient.get<Shipment>(`/shipments/${id}`)
   return response.data
 }
 
-// PUT /shipments/:id -- sends the full shipment object back (json-server replaces
-// the whole resource on PUT), so callers should merge their edits into the
-// existing shipment before calling this.
 export async function updateShipment(shipment: Shipment): Promise<Shipment> {
   const existingShipment = await fetchShipmentById(shipment.id)
   const response = await apiClient.put<Shipment>(`/shipments/${shipment.id}`, shipment)
@@ -126,7 +109,6 @@ export async function fetchShipmentsByAssignment(assignmentId: string): Promise<
   return response.data
 }
 
-// GET /statuses
 export async function fetchStatuses(): Promise<ShipmentStatus[]> {
   const response = await apiClient.get<{ id: ShipmentStatus }[]>('/statuses')
   return response.data.map((status) => status.id)

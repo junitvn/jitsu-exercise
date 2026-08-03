@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ShipmentDetailPanel } from '@/features/shipment/components/shipment-detail-panel'
@@ -155,7 +155,8 @@ describe('ShipmentDetailPanel', () => {
 
     render(<ShipmentDetailPanel shipmentId="shp_001" />)
 
-    expect(await screen.findByText('Airport completed route')).toBeVisible()
+    const assignmentTrigger = await screen.findByLabelText('Assignment')
+    expect(within(assignmentTrigger).getByText('Airport completed route')).toBeVisible()
     expect(screen.queryByText('Current assignment')).not.toBeInTheDocument()
   })
 

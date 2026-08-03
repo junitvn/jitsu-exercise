@@ -10,11 +10,6 @@ interface ShipmentListPanelProps {
   onSelect: (id: string) => void
 }
 
-/**
- * Left panel: a search box + one scrollable, virtualized list grouped by status.
- * Search is debounced and forwarded to the API (`q` param) rather than
- * filtering in the browser, since the full shipment set can be huge.
- */
 export function ShipmentListPanel({ selectedId, selectedStatus, onSelect }: ShipmentListPanelProps) {
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebouncedValue(search, 300)

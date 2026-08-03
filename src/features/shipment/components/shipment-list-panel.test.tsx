@@ -90,6 +90,6 @@ describe('ShipmentListPanel', () => {
     )
 
     expect(screen.getByRole('button', { name: /Sony/ })).toHaveAttribute('aria-current', 'true')
-    expect(screen.getByRole('region', { name: 'Open shipments' })).toHaveClass('border-primary')
+    expect(screen.getByRole('button', { pressed: true })).toHaveClass('border-primary')
   })
 })
