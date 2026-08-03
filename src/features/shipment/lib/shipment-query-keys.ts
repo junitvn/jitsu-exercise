@@ -5,6 +5,9 @@ export const shipmentQueryKeys = {
   lists: () => [...shipmentQueryKeys.all, 'list'] as const,
   list: (status: ShipmentStatus, search: string) =>
     [...shipmentQueryKeys.lists(), status, search] as const,
+  counts: () => [...shipmentQueryKeys.all, 'count'] as const,
+  count: (status: ShipmentStatus | undefined, search: string, assignmentId?: string) =>
+    [...shipmentQueryKeys.counts(), status ?? 'any', search, assignmentId ?? 'any'] as const,
   details: () => ['shipment'] as const,
   detail: (id: string) => [...shipmentQueryKeys.details(), id] as const,
   assignmentLists: () => ['assignment-shipments'] as const,

@@ -1,17 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { MobileHeader } from '@/components/ui/mobile-header'
 import { SearchInput } from '@/components/ui/search-input'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
-import { useMediaQuery } from '@/hooks/use-media-query'
+import { useIsMobile } from '@/hooks/use-is-mobile'
 import { AssignmentDetailPanel } from '@/features/assignment/components/assignment-detail-panel'
 import { AssignmentGroup } from '@/features/assignment/components/assignment-group'
 import { CreateAssignmentDialog } from '@/features/assignment/components/create-assignment-dialog'
 import { ShipmentDetailPanel } from '@/features/shipment/components/shipment-detail-panel'
 import { useAssignmentShipments } from '@/features/shipment/hooks/use-assignment-shipments'
-import { useUIStore } from '@/store/use-ui-store'
 import { DESKTOP_PANEL_WIDTH_STYLE, PANEL_SEARCH_INPUT_CLASS_NAME } from '@/utils/constants'
 
 export function AssignmentPage() {
@@ -22,29 +22,8 @@ export function AssignmentPage() {
   const navigate = useNavigate()
   const debouncedSearch = useDebouncedValue(search, 300)
   const { data: selectedAssignmentShipments = [] } = useAssignmentShipments(selectedAssignmentId)
-  const isMobile = useMediaQuery('(max-width: 767px)')
-  const setMobileHeader = useUIStore((state) => state.setMobileHeader)
-  const clearMobileHeader = useUIStore((state) => state.clearMobileHeader)
+  const isMobile = useIsMobile()
   const showMobileShipmentSheet = isMobile && selectedShipmentId
-
-  useEffect(() => {
-    setMobileHeader({
-      title: 'Assignments',
-      action: (
-        <Button
-          type="button"
-          size='sm'
-          aria-label="Create shipment"
-          onClick={() => setIsCreateOpen(true)}
-        >
-          <Plus size={14} color="#fff" />
-          <span>Create</span>
-        </Button>
-      ),
-    })
-
-    return clearMobileHeader
-  }, [clearMobileHeader, setMobileHeader])
 
   const clearSelectedShipment = () => {
     setSelectedShipmentId(undefined)
@@ -52,6 +31,22 @@ export function AssignmentPage() {
 
   return (
     <main className="h-svh overflow-hidden bg-slate-50 md:p-4 dark:bg-slate-950">
+      <MobileHeader
+        showLogo
+        title="Assignments"
+        action={
+          <Button
+            type="button"
+            size="sm"
+            aria-label="Create shipment"
+            onClick={() => setIsCreateOpen(true)}
+          >
+            <Plus size={14} color="#fff" />
+            <span>Create</span>
+          </Button>
+        }
+      />
+
       <div className="flex h-full max-w-[1600px] flex-col overflow-hidden border bg-background shadow-sm md:rounded-2xl">
         <div className="space-y-3 px-3 md:px-4 md:py-4 border-b border-slate-200 dark:border-slate-800">
           <div className="hidden items-center gap-3 md:flex">

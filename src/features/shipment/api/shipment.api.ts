@@ -51,6 +51,38 @@ export async function fetchShipments({
   }
 }
 
+interface FetchShipmentCountParams {
+  status?: ShipmentStatus
+  search?: string
+  assignmentId?: string
+  signal?: AbortSignal
+}
+
+// Same endpoint as fetchShipments, but asks for a single row (`_per_page: 1`)
+// since all we need is the `X-Total-Count` header. Callers that only want a
+// count (status tabs, assignment badges, shipment_count sync) should use this
+// instead of paging through full rows.
+export async function fetchShipmentCount({
+  status,
+  search,
+  assignmentId,
+  signal,
+}: FetchShipmentCountParams): Promise<number> {
+  const response = await apiClient.get<Shipment[]>('/shipments', {
+    signal,
+    params: {
+      status,
+      assignment_id: assignmentId,
+      q: search || undefined,
+      _page: 1,
+      _per_page: 1,
+    },
+  })
+
+  const totalCountHeader = response.headers['x-total-count']
+  return totalCountHeader ? Number(totalCountHeader) : response.data.length
+}
+
 // GET /shipments/:id
 export async function fetchShipmentById(id: string): Promise<Shipment> {
   const response = await apiClient.get<Shipment>(`/shipments/${id}`)
@@ -107,11 +139,10 @@ async function syncAssignmentShipmentCounts(assignmentIds: Array<string | null |
 }
 
 async function syncAssignmentShipmentCount(assignmentId: string) {
-  const [assignment, shipments] = await Promise.all([
+  const [assignment, shipmentCount] = await Promise.all([
     fetchAssignmentById(assignmentId),
-    fetchShipmentsByAssignment(assignmentId),
+    fetchShipmentCount({ assignmentId }),
   ])
-  const shipmentCount = shipments.length
 
   if (assignment.shipment_count === shipmentCount) return
 

@@ -1,23 +1,12 @@
-import { useState } from 'react'
-import { ClipboardList, Trash2 } from 'lucide-react'
+import { useMemo, useRef, useState } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
+import { ClipboardList } from 'lucide-react'
 import { AsyncState } from '@/components/ui/async-state'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { ConfirmDeleteButton } from '@/components/ui/confirm-delete-button'
 import { CopyableId } from '@/components/ui/copyable-id'
 import { toast } from '@/components/ui/toast'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog'
-import { cn } from '@/lib/utils'
+import { StatusTabBar } from '@/components/ui/status-tab-bar'
 import { useAssignment } from '@/features/assignment/hooks/use-assignment'
 import { useDeleteAssignment } from '@/features/assignment/hooks/use-delete-assignment'
 import { ASSIGNMENT_STATUS_STYLES } from '@/features/assignment/components/assignment-status-styles'
@@ -27,6 +16,7 @@ import { SHIPMENT_STATUS_STYLES } from '@/features/shipment/components/shipment-
 
 const SHIPMENT_STATUS_FILTERS = ['ALL', 'IN_TRANSIT', 'DELIVERED'] as const
 type ShipmentStatusFilter = typeof SHIPMENT_STATUS_FILTERS[number]
+const ROW_HEIGHT = 72
 
 interface AssignmentDetailPanelProps {
   assignmentId?: string
@@ -42,29 +32,43 @@ export function AssignmentDetailPanel({
   onDeleted,
 }: AssignmentDetailPanelProps) {
   const [activeShipmentStatus, setActiveShipmentStatus] = useState<ShipmentStatusFilter>('ALL')
+  const scrollRef = useRef<HTMLDivElement>(null)
   const { data: assignment, isLoading, isError } = useAssignment(assignmentId)
   const { data: shipments = [] } = useAssignmentShipments(assignmentId)
   const deleteAssignment = useDeleteAssignment()
-  const shipmentGroups = SHIPMENT_STATUS_FILTERS.map((status) => {
-    if (status === 'ALL') {
-      return {
-        status,
-        shipments,
-        styles: {
-          label: 'All',
-          dot: 'bg-muted-foreground',
-        },
-      }
-    }
+  const shipmentGroups = useMemo(
+    () =>
+      SHIPMENT_STATUS_FILTERS.map((status) => {
+        if (status === 'ALL') {
+          return {
+            status,
+            shipments,
+            styles: {
+              label: 'All',
+              dot: 'bg-muted-foreground',
+            },
+          }
+        }
 
-    return {
-      status,
-      shipments: shipments.filter((shipment) => shipment.status === status),
-      styles: SHIPMENT_STATUS_STYLES[status],
-    }
-  })
+        return {
+          status,
+          shipments: shipments.filter((shipment) => shipment.status === status),
+          styles: SHIPMENT_STATUS_STYLES[status],
+        }
+      }),
+    [shipments],
+  )
   const activeShipmentGroup = shipmentGroups.find((group) => group.status === activeShipmentStatus)
     ?? shipmentGroups[0]
+  // Only the visible rows are mounted -- an assignment can have a large
+  // shipment set, and this list previously rendered every row into the DOM.
+  const virtualizer = useVirtualizer({
+    count: activeShipmentGroup.shipments.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 8,
+  })
+  const virtualItems = virtualizer.getVirtualItems()
 
   if (!assignmentId) {
     return (
@@ -133,46 +137,19 @@ export function AssignmentDetailPanel({
             aria-label={`${activeShipmentGroup.styles.label} shipments`}
             className="flex min-h-0 flex-1 flex-col gap-2"
           >
+            <StatusTabBar<ShipmentStatusFilter>
+              columns={3}
+              activeKey={activeShipmentStatus}
+              onChange={setActiveShipmentStatus}
+              items={shipmentGroups.map((group) => ({
+                key: group.status,
+                label: group.styles.label,
+                dot: group.styles.dot,
+                count: group.shipments.length,
+              }))}
+            />
             <div
-              className="sticky top-0 z-20 grid shrink-0 grid-cols-3 gap-1 rounded-xl bg-background"
-            >
-              {shipmentGroups.map((group) => {
-                const isActive = activeShipmentStatus === group.status
-
-                return (
-                  <button
-                    key={group.status}
-                    type="button"
-                    aria-pressed={isActive}
-                    onClick={() => setActiveShipmentStatus(group.status)}
-                    className={cn(
-                      'flex min-h-11 flex-col justify-center gap-0.5 rounded-md border px-2 py-1.5 text-left transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                      isActive
-                        ? cn(
-                          'border-primary bg-background shadow-sm ring-1 ring-primary/30',
-                        )
-                        : 'border bg-transparent',
-                    )}
-                  >
-                    <span className="text-lg font-semibold leading-none tabular-nums text-foreground">
-                      {group.shipments.length}
-                    </span>
-                    <span className="flex min-w-0 items-center gap-1.5">
-                      <span
-                        className={cn('size-2.5 shrink-0 rounded-full', group.styles.dot)}
-                        aria-hidden="true"
-                      />
-                      <span
-                        className={cn('truncate text-xs font-semibold', isActive && 'text-primary')}
-                      >
-                        {group.styles.label}
-                      </span>
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-            <div
+              ref={scrollRef}
               className="min-h-0 flex-1 overflow-auto rounded-xl border bg-background"
             >
               {activeShipmentGroup.shipments.length === 0 ? (
@@ -180,19 +157,29 @@ export function AssignmentDetailPanel({
                   No {activeShipmentGroup.styles.label.toLowerCase()} shipments.
                 </p>
               ) : (
-                activeShipmentGroup.shipments.map((shipment) => {
-                  const isSelected = selectedShipmentId === shipment.id
+                <div style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
+                  {virtualItems.map((virtualRow) => {
+                    const shipment = activeShipmentGroup.shipments[virtualRow.index]
+                    const isSelected = selectedShipmentId === shipment.id
 
-                  return (
-                    <ShipmentItem
-                      key={shipment.id}
-                      shipment={shipment}
-                      isSelected={isSelected}
-                      onSelect={() => onSelectShipment(shipment.id)}
-                      className="min-h-[72px]"
-                    />
-                  )
-                })
+                    return (
+                      <ShipmentItem
+                        key={shipment.id}
+                        shipment={shipment}
+                        isSelected={isSelected}
+                        onSelect={onSelectShipment}
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '100%',
+                          height: virtualRow.size,
+                          transform: `translateY(${virtualRow.start}px)`,
+                        }}
+                      />
+                    )
+                  })}
+                </div>
               )}
             </div>
           </section>
@@ -200,47 +187,17 @@ export function AssignmentDetailPanel({
       </div>
 
       <div className="mt-auto flex w-full shrink-0 flex-row items-end justify-end">
-        <Tooltip disabled={!deleteDisabledReason}>
-          <TooltipTrigger
-            render={
-              <span
-                className="inline-flex w-full"
-                tabIndex={deleteDisabledReason ? 0 : undefined}
-              />
-            }
-          >
-            <AlertDialog>
-              <AlertDialogTrigger
-                render={
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    className="w-full"
-                    disabled={Boolean(deleteDisabledReason)}
-                  />
-                }
-              >
-                <Trash2 aria-hidden="true" />
-                {deleteAssignment.isPending ? 'Deleting…' : 'Delete assignment'}
-              </AlertDialogTrigger>
-              <AlertDialogContent size="sm">
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete assignment?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will permanently delete {assignment.label}. This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction variant="destructive" onClick={onDelete}>
-                    Delete assignment
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </TooltipTrigger>
-          <TooltipContent>{deleteDisabledReason}</TooltipContent>
-        </Tooltip>
+        <ConfirmDeleteButton
+          label="Delete assignment"
+          dialogTitle="Delete assignment?"
+          dialogDescription={
+            <>This will permanently delete {assignment.label}. This action cannot be undone.</>
+          }
+          onConfirm={onDelete}
+          isPending={deleteAssignment.isPending}
+          disabledReason={deleteDisabledReason}
+          className="w-full"
+        />
       </div>
     </section>
   )

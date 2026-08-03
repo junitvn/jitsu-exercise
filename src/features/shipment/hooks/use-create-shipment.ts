@@ -1,16 +1,9 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createShipment } from '@/features/shipment/api/shipment.api'
 import { assignmentQueryKeys } from '@/features/assignment/lib/assignment-query-keys'
 import { shipmentQueryKeys } from '@/features/shipment/lib/shipment-query-keys'
+import { createUseCreateMutation } from '@/lib/query-factory'
 
-export function useCreateShipment() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: createShipment,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: shipmentQueryKeys.all })
-      queryClient.invalidateQueries({ queryKey: assignmentQueryKeys.all })
-    },
-  })
-}
+export const useCreateShipment = createUseCreateMutation({
+  createFn: createShipment,
+  invalidateKeys: [shipmentQueryKeys.all, assignmentQueryKeys.all],
+})

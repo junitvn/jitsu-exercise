@@ -5,7 +5,12 @@ import 'leaflet-routing-machine'
 import 'leaflet-routing-machine/dist/leaflet-routing-machine.css'
 import { cn } from '@/lib/utils'
 import { SHIPMENT_STATUS_STYLES } from '@/features/shipment/components/shipment-status-styles'
-import type { Shipment, ShipmentStatus } from '@/features/shipment/types/shipment'
+import {
+  getShipmentPointsSignature,
+  getStatusOrderedShipmentRoute,
+} from '@/features/shipment/lib/shipment-route'
+import type { ShipmentPoint } from '@/features/shipment/lib/shipment-route'
+import type { Shipment } from '@/features/shipment/types/shipment'
 
 interface ShipmentMapProps {
   shipments: Shipment[]
@@ -14,15 +19,6 @@ interface ShipmentMapProps {
   connectPins?: boolean
   onSelectShipment?: (id: string) => void
 }
-
-type ShipmentPoint = {
-  id: string
-  lat: number
-  lng: number
-  status: ShipmentStatus
-}
-
-const SHIPMENT_STATUS_ORDER: ShipmentStatus[] = ['OPEN', 'IN_TRANSIT', 'DELIVERED']
 
 function getMarkerIcon(color: string) {
   return L.divIcon({
@@ -50,17 +46,20 @@ export function ShipmentMap({
   const center: L.LatLngExpression = initialShipment
     ? [initialShipment.lat, initialShipment.lng]
     : [32.7767, -96.797]
-  const routePoints = useMemo(
+  const shipmentPoints: ShipmentPoint[] = useMemo(
     () =>
-      getStatusOrderedShipmentRoute(
-        mappableShipments.map((shipment) => ({
-          id: shipment.id,
-          lat: shipment.lat,
-          lng: shipment.lng,
-          status: shipment.status,
-        })),
-      ),
+      mappableShipments.map((shipment) => ({
+        id: shipment.id,
+        lat: shipment.lat,
+        lng: shipment.lng,
+        status: shipment.status,
+      })),
     [mappableShipments],
+  )
+  const routeSignature = getShipmentPointsSignature(shipmentPoints)
+  const routePoints = useMemo(
+    () => getStatusOrderedShipmentRoute(shipmentPoints),
+    [routeSignature],
   )
 
   return (
@@ -169,69 +168,4 @@ function MapViewport({
   }, [map, selectedShipment, shipments])
 
   return null
-}
-
-function getStatusOrderedShipmentRoute(points: ShipmentPoint[]) {
-  return SHIPMENT_STATUS_ORDER.flatMap((status) =>
-    getShortestShipmentOrder(points.filter((point) => point.status === status)),
-  )
-}
-
-function getShortestShipmentOrder(points: ShipmentPoint[]) {
-  if (points.length < 3) {
-    return points
-  }
-
-  return points
-    .map((_, index) => index)
-    .map((startIndex) => buildNearestNeighborRoute(points, startIndex))
-    .sort((a, b) => getRouteDistance(a) - getRouteDistance(b))[0]
-}
-
-function buildNearestNeighborRoute(points: ShipmentPoint[], startIndex: number) {
-  const remaining = points.filter((_, index) => index !== startIndex)
-  const route = [points[startIndex]]
-
-  while (remaining.length > 0) {
-    const current = route[route.length - 1]
-    let nearestIndex = 0
-    let nearestDistance = getPointDistance(current, remaining[0])
-
-    for (let index = 1; index < remaining.length; index += 1) {
-      const distance = getPointDistance(current, remaining[index])
-
-      if (distance < nearestDistance) {
-        nearestIndex = index
-        nearestDistance = distance
-      }
-    }
-
-    route.push(remaining.splice(nearestIndex, 1)[0])
-  }
-
-  return route
-}
-
-function getRouteDistance(points: ShipmentPoint[]) {
-  return points.reduce((total, point, index) => {
-    const previousPoint = points[index - 1]
-
-    return previousPoint ? total + getPointDistance(previousPoint, point) : total
-  }, 0)
-}
-
-function getPointDistance(pointA: ShipmentPoint, pointB: ShipmentPoint) {
-  const latA = toRadians(pointA.lat)
-  const latB = toRadians(pointB.lat)
-  const deltaLat = toRadians(pointB.lat - pointA.lat)
-  const deltaLng = toRadians(pointB.lng - pointA.lng)
-  const haversine =
-    Math.sin(deltaLat / 2) ** 2 +
-    Math.cos(latA) * Math.cos(latB) * Math.sin(deltaLng / 2) ** 2
-
-  return 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine))
-}
-
-function toRadians(degrees: number) {
-  return (degrees * Math.PI) / 180
 }

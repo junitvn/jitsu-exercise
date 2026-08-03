@@ -1,9 +1,8 @@
 import { useState } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router'
+import { NavLink, Outlet } from 'react-router'
 import { ChevronsLeft, ChevronsRight, ClipboardList, PackageSearch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { useUIStore } from '@/store/use-ui-store'
 
 const navigationItems = [
   { to: '/', label: 'Shipments', icon: PackageSearch, end: true },
@@ -11,32 +10,10 @@ const navigationItems = [
 ]
 
 export function RootLayout() {
-  const { pathname } = useLocation()
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true)
-  const mobileHeaderTitle = useUIStore((state) => state.mobileHeaderTitle)
-  const mobileHeaderAction = useUIStore((state) => state.mobileHeaderAction)
-  const showMobileHeaderLogo = navigationItems.some(({ to }) => pathname === to)
 
   return (
     <div className="flex min-h-svh bg-slate-50 dark:bg-slate-950">
-      <header className="fixed inset-x-0 top-0 z-40 flex h-14 items-center border-b bg-background/95 px-3 shadow-sm backdrop-blur md:hidden">
-        {showMobileHeaderLogo && (
-          <img
-            src="/logo-jitsu-icon.svg"
-            alt=""
-            className="h-7 w-4 mr-2 max-w-none object-contain sm:h-14"
-          />
-        )}
-        <div className="min-w-0 flex-1 pr-2">
-          {typeof mobileHeaderTitle === 'string' ? (
-            <div className="truncate text-[22px] md:text-lg font-semibold tracking-tight">{mobileHeaderTitle}</div>
-          ) : (
-            mobileHeaderTitle && <div className="min-w-0">{mobileHeaderTitle}</div>
-          )}
-        </div>
-        {mobileHeaderAction}
-      </header>
-
       <aside
         className={cn(
           'sticky top-4 z-30 m-4 mr-0 hidden h-[calc(100svh-2rem)] shrink-0 flex-col overflow-hidden rounded-2xl border bg-background p-3 pt-4 shadow-sm transition-[width] duration-200 md:flex',

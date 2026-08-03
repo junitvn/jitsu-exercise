@@ -1,11 +1,5 @@
-import { useQuery } from '@tanstack/react-query'
 import { fetchAssignmentById } from '@/features/assignment/api/assignment.api'
 import { assignmentQueryKeys } from '@/features/assignment/lib/assignment-query-keys'
+import { createUseDetailQuery } from '@/lib/query-factory'
 
-export function useAssignment(id: string | undefined) {
-  return useQuery({
-    queryKey: assignmentQueryKeys.detail(id ?? ''),
-    queryFn: () => fetchAssignmentById(id as string),
-    enabled: Boolean(id),
-  })
-}
+export const useAssignment = createUseDetailQuery(assignmentQueryKeys.detail, fetchAssignmentById)

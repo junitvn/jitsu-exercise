@@ -1,10 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
-import { useQueries } from '@tanstack/react-query'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { LoaderCircle } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { fetchShipments } from '@/features/shipment/api/shipment.api'
+import { StatusTabBar } from '@/components/ui/status-tab-bar'
 import { useShipments } from '@/features/shipment/hooks/use-shipments'
+import { useShipmentCounts } from '@/features/shipment/hooks/use-shipment-counts'
 import { ShipmentItem } from '@/features/shipment/components/shipment-item'
 import { SHIPMENT_STATUS_STYLES } from '@/features/shipment/components/shipment-status-styles'
 import type { ShipmentStatus } from '@/features/shipment/types/shipment'
@@ -45,22 +44,23 @@ export function ShipmentGroupList({
     }
   }, [selectedStatus])
 
-  const countQueries = useQueries({
-    queries: STATUSES.map((status) => ({
-      queryKey: ['shipments', 'status-count', status, search],
-      queryFn: ({ signal }: { signal: AbortSignal }) =>
-        fetchShipments({ status, search, page: 1, signal }),
-      enabled: status !== activeStatus,
-      staleTime: 30_000,
-    })),
-  })
+  const countRequests = useMemo(
+    () =>
+      STATUSES.filter((status) => status !== activeStatus).map((status) => ({
+        key: status,
+        status,
+        search,
+      })),
+    [activeStatus, search],
+  )
+  const statusCounts = useShipmentCounts(countRequests)
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isError, refetch } = useShipments(
     activeStatus,
     search,
   )
 
-  const shipments = data?.pages.flatMap((page) => page.items) ?? []
+  const shipments = useMemo(() => data?.pages.flatMap((page) => page.items) ?? [], [data?.pages])
   const totalCount = data?.pages[0]?.totalCount
 
   const virtualizer = useVirtualizer({
@@ -89,47 +89,17 @@ export function ShipmentGroupList({
       aria-label={`${styles.label} shipments`}
       className="flex min-h-0 flex-1 flex-col gap-2"
     >
-      <div
-        className="sticky top-0 z-20 grid shrink-0 grid-cols-3 gap-1 rounded-xl bg-background"
-      >
-        {STATUSES.map((status, index) => {
-          const statusStyles = SHIPMENT_STATUS_STYLES[status]
-          const countData = countQueries[index]?.data
-          const count = status === activeStatus ? totalCount ?? shipments.length : countData?.totalCount
-          const isActive = activeStatus === status
-
-          return (
-            <button
-              key={status}
-              type="button"
-              aria-pressed={isActive}
-              onClick={() => setActiveStatus(status)}
-              className={cn(
-                'flex min-h-11 flex-col justify-center gap-0.5 rounded-md border px-2 py-1.5 text-left transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                isActive
-                  ? cn(
-                    'border-primary bg-background shadow-sm ring-1 ring-primary/30',
-                    // statusStyles.groupHeader
-                  )
-                  : 'border bg-transparent',
-              )}
-            >
-              <span className="text-lg font-semibold leading-none tabular-nums text-foreground">
-                {count ?? 0}
-              </span>
-              <span className="flex min-w-0 items-center gap-1.5">
-                <span
-                  className={cn('size-2.5 shrink-0 rounded-full', statusStyles.dot)}
-                  aria-hidden="true"
-                />
-                <span className={cn('truncate text-xs font-semibold', isActive && 'text-primary')}>
-                  {statusStyles.label}
-                </span>
-              </span>
-            </button>
-          )
-        })}
-      </div>
+      <StatusTabBar
+        columns={3}
+        activeKey={activeStatus}
+        onChange={setActiveStatus}
+        items={STATUSES.map((status) => ({
+          key: status,
+          label: SHIPMENT_STATUS_STYLES[status].label,
+          dot: SHIPMENT_STATUS_STYLES[status].dot,
+          count: status === activeStatus ? totalCount ?? shipments.length : statusCounts.get(status),
+        }))}
+      />
 
       <div
         ref={scrollRef}
@@ -173,7 +143,7 @@ export function ShipmentGroupList({
                   key={shipment.id}
                   shipment={shipment}
                   isSelected={isSelected}
-                  onSelect={() => onSelect(shipment.id)}
+                  onSelect={onSelect}
                   style={{
                     position: 'absolute',
                     top: 0,

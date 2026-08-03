@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react'
+import { memo, type CSSProperties, type ReactNode } from 'react'
 import { Package, PackageCheck, Truck } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatDateOnly } from '@/utils/format-date'
@@ -14,13 +14,16 @@ const SHIPMENT_STATUS_ICONS: Record<ShipmentStatus, typeof Package> = {
 interface ShipmentItemProps {
   shipment: Shipment
   isSelected: boolean
-  onSelect: () => void
+  // Takes the id rather than being pre-bound to it, so parents (list/virtualizer)
+  // can pass the same stable function to every row instead of allocating a new
+  // closure per row on every render.
+  onSelect: (id: string) => void
   style?: CSSProperties
   className?: string
   arrivalMeta?: ReactNode
 }
 
-export function ShipmentItem({
+function ShipmentItemComponent({
   shipment,
   isSelected,
   onSelect,
@@ -35,7 +38,7 @@ export function ShipmentItem({
     <button
       type="button"
       aria-current={isSelected ? 'true' : undefined}
-      onClick={onSelect}
+      onClick={() => onSelect(shipment.id)}
       style={style}
       className={cn(
         'relative flex w-full flex-row  gap-3 border-t border-black/5 bg-transparent px-3 py-2 text-left transition-colors first:border-t-0 hover:bg-muted/50 dark:border-white/5',
@@ -81,3 +84,33 @@ export function ShipmentItem({
     </button>
   )
 }
+
+function isStyleEqual(a: CSSProperties | undefined, b: CSSProperties | undefined) {
+  if (a === b) return true
+  if (!a || !b) return false
+  return (
+    a.top === b.top &&
+    a.left === b.left &&
+    a.width === b.width &&
+    a.height === b.height &&
+    a.transform === b.transform &&
+    a.position === b.position
+  )
+}
+
+// The virtualizer rebuilds the `style` object (top/left/transform) on every
+// render even when a row's position hasn't actually changed, and the parent
+// list rebuilds its `shipments` array each render too. A default shallow
+// prop-equality check would treat every row as changed and re-render the
+// whole visible window on each scroll tick; comparing `style` and `shipment`
+// by value/id lets rows that genuinely didn't change bail out.
+export const ShipmentItem = memo(ShipmentItemComponent, (prev, next) => {
+  return (
+    prev.shipment === next.shipment &&
+    prev.isSelected === next.isSelected &&
+    prev.onSelect === next.onSelect &&
+    prev.className === next.className &&
+    prev.arrivalMeta === next.arrivalMeta &&
+    isStyleEqual(prev.style, next.style)
+  )
+})

@@ -1,10 +1,11 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Package, Trash2 } from 'lucide-react'
+import { Package } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AsyncState } from '@/components/ui/async-state'
 import { Button } from '@/components/ui/button'
+import { ConfirmDeleteButton } from '@/components/ui/confirm-delete-button'
 import { DateTimePicker } from '@/components/ui/date-time-picker'
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
@@ -12,17 +13,6 @@ import { Badge } from '@/components/ui/badge'
 import { CopyableId } from '@/components/ui/copyable-id'
 import { DetailField } from '@/components/ui/detail-field'
 import { toast } from '@/components/ui/toast'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog'
 import {
   Select,
   SelectContent,
@@ -45,6 +35,7 @@ import {
   getTransitionError,
   getValidTargetStatuses,
 } from '@/features/shipment/lib/status-transitions'
+import { getAssignmentFieldState, getTransitionErrorField } from '@/features/shipment/lib/shipment-form'
 
 interface ShipmentDetailPanelProps {
   shipmentId: string | undefined
@@ -96,6 +87,25 @@ export function ShipmentDetailPanel({
     })
   }, [shipment, form])
 
+  const watchedLat = form.watch('lat')
+  const watchedLng = form.watch('lng')
+
+  // Memoized so the map (and its O(n^2) route ordering) only recomputes when
+  // the shipment set or the edited position actually changes, not on every
+  // unrelated re-render of this panel. Hooks must run unconditionally, so
+  // this sits above the early returns below and tolerates `shipment` being
+  // undefined while the query is still loading.
+  const editableMapShipment = useMemo(
+    () => (shipment ? { ...shipment, lat: Number(watchedLat), lng: Number(watchedLng) } : undefined),
+    [shipment, watchedLat, watchedLng],
+  )
+  const mapShipments = useMemo(() => {
+    if (!shipment || !editableMapShipment) return []
+    return shipments.length > 0
+      ? shipments.map((mapShipment) => (mapShipment.id === shipment.id ? editableMapShipment : mapShipment))
+      : [editableMapShipment]
+  }, [shipments, shipment, editableMapShipment])
+
   if (!shipmentId) {
     return (
       <AsyncState
@@ -121,8 +131,6 @@ export function ShipmentDetailPanel({
   }
 
   const deliveryByDate = form.watch('delivery_by_date')
-  const lat = form.watch('lat')
-  const lng = form.watch('lng')
   const targetStatus = form.watch('status')
   const assignmentId = form.watch('assignment_id')
   const isDirty = form.formState.isDirty
@@ -148,28 +156,17 @@ export function ShipmentDetailPanel({
       value: assignment.id,
     })),
   ]
-  const editableMapShipment = { ...shipment, lat: Number(lat), lng: Number(lng) }
-  const needsAssignment = shipment.status === 'OPEN' && targetStatus === 'IN_TRANSIT'
-  const isAssignmentSelectDisabled =
-    targetStatus === 'OPEN' || (!needsAssignment && shipment.status !== 'IN_TRANSIT')
-  const showAssignmentDescription =
-    targetStatus !== 'OPEN' && targetStatus !== 'DELIVERED' && !needsAssignment && shipment.status !== 'IN_TRANSIT'
-  const mapShipments =
-    shipments.length > 0
-      ? shipments.map((mapShipment) =>
-        mapShipment.id === shipment.id ? editableMapShipment : mapShipment,
-      )
-      : [editableMapShipment]
+  const { isAssignmentSelectDisabled, showAssignmentDescription } =
+    getAssignmentFieldState(shipment.status, targetStatus)
 
   const onSubmit = (values: ShipmentEditValues) => {
     const nextAssignmentId = values.assignment_id || null
     const error = getTransitionError(shipment, values.status, nextAssignmentId)
     if (error) {
-      if (shipment.status === 'OPEN' && values.status === 'IN_TRANSIT' && !nextAssignmentId) {
-        form.setError('assignment_id', { type: 'manual', message: error })
-      } else {
-        form.setError('status', { type: 'manual', message: error })
-      }
+      form.setError(getTransitionErrorField(shipment, values.status, nextAssignmentId), {
+        type: 'manual',
+        message: error,
+      })
       return
     }
 
@@ -403,35 +400,16 @@ export function ShipmentDetailPanel({
         />
 
         <div className="mt-auto flex w-full shrink-0 justify-end gap-2 pt-1 pb-2 sm:pb-0">
-          <AlertDialog>
-            <AlertDialogTrigger
-              render={
-                <Button
-                  type="button"
-                  variant="destructive"
-                  disabled={deleteShipment.isPending}
-                  className="flex-1 sm:flex-none"
-                />
-              }
-            >
-              <Trash2 aria-hidden="true" />
-              {deleteShipment.isPending ? 'Deleting…' : 'Delete'}
-            </AlertDialogTrigger>
-            <AlertDialogContent size="sm">
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete shipment?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will permanently delete {shipment.label}. This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction variant="destructive" onClick={onDelete}>
-                  Delete
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          <ConfirmDeleteButton
+            label="Delete"
+            dialogTitle="Delete shipment?"
+            dialogDescription={
+              <>This will permanently delete {shipment.label}. This action cannot be undone.</>
+            }
+            onConfirm={onDelete}
+            isPending={deleteShipment.isPending}
+            className="flex-1 sm:flex-none"
+          />
           <Button
             type="submit"
             disabled={updateShipment.isPending || !isDirty}
